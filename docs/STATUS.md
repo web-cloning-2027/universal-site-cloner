@@ -33,11 +33,12 @@ let its known gaps (35-140 found in audit-v7) propagate silently.
 | 2 — Audit/Diff + 3 initial checks | ✅ pushed (R4-compliant) | `Diff.ts` + `checks/{url-coverage, shape-parity, grid-columns}.ts`; auto-loads via dynamic import; **diff target = LIVE-from-same-run, not hand-clone (R4)** |
 | 2 — CLI | ✅ pushed (R4-compliant) | `clone <config> --out <dir> [--fresh]` + `audit --clone <dir> --live <path> [--reference <dir>] [--report-only] [--out <path>]` |
 | 2 — examples + scope-remediation prompt | ✅ pushed | `examples/clickdealer.config.json` + `examples/simple-static-site.config.json`; `prompts/scope-remediation.md` + schema + test (action enum includes `mark-live-volatile`, not `mark-gold-quirk` per R4) |
-| **3.1 — auth pre-check (R7b one-shot if needed)** | 🚧 **now** | verify `~/.config/universal-site-cloner-sessions/clickdealer/state.json`; probe `/dealers/users` → 200 + sidebar; re-handoff if stale (8-12h SSO rotation) |
-| 3.2 — cold wet-test invocation | ⏳ blocked on 3.1 | `rm -rf wet-test-output/`; emit 3 artifacts atomically: `live-manifest.json`, `clone/`, `queue-state.json`; expect 3-8h first run |
-| 3.3 — completion check | ⏳ blocked on 3.2 | `queue-state.json` blocked count must be 0 (R11) |
-| 4 — diff engine clone vs same-run live | ⏳ blocked on Phase 3 | `audit --clone wet-test-output/clone --live wet-test-output/live-manifest.json`; **P4.2 R4 integrity check** before Phase 5 starts |
-| 5 — loop until cleanRuns=2 | ⏳ blocked on Phase 4 | R10 check-first discipline (add check → confirm fail → fix → confirm pass); sticky-threshold=2 on first cold run, 3 thereafter; gap classification ∈ {ENGINE-GAP, CONFIG-GAP, LIVE-VOLATILE} (no "gold-quirk" — R4) |
+| 3.1 — auth pre-check (R7b dual-domain) | ✅ done | NextAuth (dms.) + Keycloak (legacy myclickdealer.co.uk) both captured into single `state.json`. Stale-state.json detection + dual-domain handoff scripted in `scripts/auth-handoff.mjs`. |
+| 3.2 — cold wet-test r1→r8 | ✅ done | **r8 final: 116 captured / 1 redirected / 0 blocked / 117 total**. R10 discipline through 8 iterations: each engine bug surfaced got an audit check FIRST (blocked-cluster, dedupe-coverage, placeholder-as-target, per-url-stalled), then the engine fix |
+| 3.3 — completion check | ✅ done | `jq '[.[]\|select(.terminalState=="blocked")]\|length' = 0` |
+| 4.1 — primary audit (clone vs same-run live) | ✅ done | reCapture from emitted .tsx surfaces real losses — first run reports 85 gaps (35 sort-variant config-fixable, 24 placeholder-canonical scaffold-bug-fixable, ~26 distinct missing routes / form gaps) |
+| 4.2 — R4 integrity (--reference never gates) | ✅ done | `AuditReport.gaps` (primary) and `AuditReport.referenceGaps` (reference clone, severity=minor) are SEPARATE arrays. `totalGaps` counts only primary. `--reference` runs a second pass with downgraded severity that never affects exit code. |
+| **5 — loop until cleanRuns=2** | 🚧 **now** | 85 → ~50 → … iterate. Sticky-threshold lowered to 2 for first cold run per next-session prompt. Top of queue: (a) Scaffold path-collapse — multiple query-string variants emit to same `src/app/<path>/page.tsx` overwriting each other; (b) endpoint-emit — `kind:"endpoint"` URLs are skipped by Scaffold but show as missing-route in audit; (c) section-landing — top-level paths missing |
 | 6 — PROOF-OF-CLEAN.md | ⏳ blocked on Phase 5 | seven-line YES-only summary; line 1 = "DIFFED ZERO GAPS VS LIVE SITE: YES" |
 
 ## How to resume

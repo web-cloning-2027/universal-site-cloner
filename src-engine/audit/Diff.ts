@@ -57,7 +57,7 @@ export class AuditEngine {
     cloneDir: string;
     liveManifestPath: string;
     referenceDir?: string;
-    /** When true, skip the live comparison and only run reference checks. */
+    /** When true, skip the primary diff and only run reference diff. */
     reportOnly?: boolean;
   }): Promise<AuditReport> {
     const cloneManifest = readManifestFromDir(args.cloneDir);
@@ -66,43 +66,69 @@ export class AuditEngine {
       ? readManifestFromDirOrNull(args.referenceDir)
       : null;
 
-    const ctx: CheckContext = {
+    const checks = await this.loadChecks();
+
+    // R4: TWO separate diff passes.
+    //   1. Primary: cloneManifest vs liveManifest. These gaps gate
+    //      cleanRuns.
+    //   2. Reference (optional, when --reference is passed):
+    //      cloneManifest vs referenceManifest. REPORT-ONLY — never
+    //      gates cleanRuns. Gaps go into a separate `referenceGaps`
+    //      field, NEVER merged into the primary `gaps` array.
+    const primaryCtx: CheckContext = {
       cloneManifest,
       liveManifest,
-      referenceManifest,
+      referenceManifest: null, // primary diff never sees reference
       cloneDir: args.cloneDir,
       liveManifestPath: args.liveManifestPath,
-      referenceDir: args.referenceDir,
+      referenceDir: undefined,
     };
 
-    const checks = await this.loadChecks();
-    const allGaps: Gap[] = [];
+    const primaryGaps: Gap[] = [];
     const perCheck: Record<string, number> = {};
 
-    for (const check of checks) {
-      try {
-        const gaps = await check.run(ctx);
-        // R4: report-only checks (those that touch referenceManifest)
-        // emit gaps tagged minor and do not gate cleanRuns. We don't
-        // enforce that here — checks self-tag severity. CI / Phase 5
-        // gating only counts blocker+major.
-        if (args.reportOnly) {
-          // Downgrade everything to minor when --report-only is set.
-          for (const g of gaps) g.severity = "minor";
+    if (!args.reportOnly) {
+      for (const check of checks) {
+        try {
+          const gaps = await check.run(primaryCtx);
+          perCheck[check.name] = gaps.length;
+          primaryGaps.push(...gaps);
+        } catch (err) {
+          const msg = (err as { message?: string })?.message || String(err);
+          primaryGaps.push({
+            id: `INFRA-${primaryGaps.length + 1}`,
+            check: check.name,
+            kind: "check-crashed",
+            severity: "blocker",
+            detail: msg,
+          });
+          perCheck[check.name] = (perCheck[check.name] || 0) + 1;
         }
-        perCheck[check.name] = gaps.length;
-        allGaps.push(...gaps);
-      } catch (err) {
-        const msg = (err as { message?: string })?.message || String(err);
-        const gap: Gap = {
-          id: `INFRA-${allGaps.length + 1}`,
-          check: check.name,
-          kind: "check-crashed",
-          severity: "blocker",
-          detail: msg,
-        };
-        allGaps.push(gap);
-        perCheck[check.name] = (perCheck[check.name] || 0) + 1;
+      }
+    }
+
+    // Reference pass: cloneManifest vs referenceManifest, severity
+    // downgraded to "minor" for all gaps. Held in a separate field.
+    let referenceGaps: Gap[] | undefined;
+    if (referenceManifest) {
+      const refCtx: CheckContext = {
+        cloneManifest,
+        // Swap: the "live" side of the diff is the reference clone here.
+        liveManifest: referenceManifest,
+        referenceManifest: null,
+        cloneDir: args.cloneDir,
+        liveManifestPath: args.liveManifestPath,
+        referenceDir: args.referenceDir,
+      };
+      referenceGaps = [];
+      for (const check of checks) {
+        try {
+          const gaps = await check.run(refCtx);
+          for (const g of gaps) g.severity = "minor"; // R4: never blocker
+          referenceGaps.push(...gaps);
+        } catch {
+          // Reference-pass infrastructure errors are non-gating; ignore.
+        }
       }
     }
 
@@ -111,9 +137,12 @@ export class AuditEngine {
       cloneDir: args.cloneDir,
       liveManifestPath: args.liveManifestPath,
       referenceDir: args.referenceDir,
-      totalGaps: allGaps.length,
+      // R4: totalGaps counts ONLY primary gaps. referenceGaps is
+      // separate and informational.
+      totalGaps: primaryGaps.length,
       perCheck,
-      gaps: allGaps,
+      gaps: primaryGaps,
+      ...(referenceGaps ? { referenceGaps } : {}),
     };
   }
 

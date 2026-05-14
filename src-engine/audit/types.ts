@@ -32,9 +32,14 @@ export interface AuditReport {
   cloneDir: string;
   liveManifestPath: string;
   referenceDir?: string;
+  /** Count of gating gaps (gaps from clone-vs-live diff). */
   totalGaps: number;
   perCheck: Record<string, number>;
+  /** Primary gaps: engine clone vs same-run live. THESE gate cleanRuns. */
   gaps: Gap[];
+  /** Reference gaps: engine clone vs --reference hand-clone. REPORT-ONLY
+   *  per R4 — never counted in totalGaps, never gate cleanRuns. */
+  referenceGaps?: Gap[];
 }
 
 export interface CheckContext {

@@ -102,12 +102,15 @@ async function cmdClone(args: {
     const scaffold = new Scaffold({ manifest, outDir: cloneDir });
     const emit = scaffold.emit();
 
-    // The clone-side manifest mirrors the same source-of-truth for now.
-    // A future analyzer pass will re-capture from the rendered clone
-    // and diff. For Phase 3 step 6 atomicity, we always write both.
+    // R4: re-capture what the renderer ACTUALLY emitted from the .tsx
+    // source files (not what it was told to emit). This is the
+    // engine's side of the diff — losses from shape selection or
+    // component templating become visible.
+    const { reCaptureCloneManifest } = await import("./renderer/reCapture.js");
+    const cloneManifest = reCaptureCloneManifest(cloneDir, cfg.name);
     writeFileSync(
       resolve(cloneDir, "manifest.json"),
-      JSON.stringify(manifest, null, 2),
+      JSON.stringify(cloneManifest, null, 2),
     );
     log.write({
       phase: "3.3",
