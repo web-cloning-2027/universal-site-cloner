@@ -18,6 +18,7 @@
  * to emit, so the renderer's losses become visible.
  */
 
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Leaf, LeafContent, LeafShape, Manifest } from "../manifest.js";
@@ -85,10 +86,21 @@ function componentNameForUrl(url: string): string {
     // suffix so canonical-with-query URLs (e.g. ?id=:id vs ?vehicle_id=:id)
     // get distinct componentName / route paths.
     if (u.search) {
-      const keys = [...new URLSearchParams(u.search).keys()]
+      const allKeys = [...new URLSearchParams(u.search).keys()];
+      const keys = allKeys
         .map((k) => k.replace(/[^a-z0-9]+/gi, ""))
         .filter(Boolean);
-      if (keys.length > 0) p = p + "/" + keys.join("-").toLowerCase();
+      if (keys.length > 0) {
+        const hasDupKeys = keys.length !== new Set(keys).size;
+        p = p + "/" + keys.join("-").toLowerCase();
+        if (hasDupKeys) {
+          const hash = createHash("sha1")
+            .update(u.search)
+            .digest("hex")
+            .slice(0, 6);
+          p = p + "-" + hash;
+        }
+      }
     }
     const segs = p
       .replace(/^\//, "")

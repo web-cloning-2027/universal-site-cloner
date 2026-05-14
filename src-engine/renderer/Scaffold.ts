@@ -14,10 +14,15 @@
  * instantiates it with the manifest's leafContent as props.
  */
 
+import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Leaf, LeafShape, Manifest } from "../manifest.js";
+
+function shortHash(s: string): string {
+  return createHash("sha1").update(s).digest("hex").slice(0, 6);
+}
 
 const SHAPES_DIR = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -103,13 +108,26 @@ export class Scaffold {
       // and must get DISTINCT routes. Encode the query-string
       // discriminator into the path as a /-<key1>-<key2> suffix so
       // siblings don't overwrite each other.
+      //
+      // For URLs with IDENTICAL query keys but DIFFERENT values (e.g.
+      // ?sort=col vs ?sort=col,model), the key-tuple suffix would
+      // collide. Append a short hash of the full query string in that
+      // case to keep them distinct.
       if (u.search) {
-        const keys = [...new URLSearchParams(u.search).keys()]
+        const params = [...new URLSearchParams(u.search).keys()];
+        const keys = params
           .map((k) => k.replace(/[^a-z0-9]+/gi, ""))
           .filter(Boolean);
         if (keys.length > 0) {
+          const hasDupKeys = keys.length !== new Set(keys).size;
           const suffix = "/" + keys.join("-").toLowerCase();
-          p = p + suffix;
+          let suffixed = p + suffix;
+          if (hasDupKeys) {
+            // Append a 6-char hash of u.search to disambiguate
+            // value-only differences with duplicate keys.
+            suffixed += "-" + shortHash(u.search);
+          }
+          p = suffixed;
         }
       }
       return p || "/";

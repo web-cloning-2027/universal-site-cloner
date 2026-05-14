@@ -61,9 +61,14 @@ export class Queue {
   /** Canonicalize a URL: drop hash, apply dedupe rules, then normalize. */
   canonicalize(rawUrl: string): string | null {
     // R10 template-leak filter: reject URLs whose query string still
-    // contains an unresolved {TEMPLATE_PLACEHOLDER}. Generic across
-    // sites — every page-template language can leak placeholders.
+    // contains an unresolved template placeholder. Generic across
+    // sites — every page-template language can leak placeholders:
+    //   {UPPERCASE}     PHP/Twig/Jinja
+    //   :identifier     Rails/Express/Slim style — anchor hrefs
+    //                   sometimes get literal `:id` instead of a
+    //                   substituted value
     if (/\{[A-Z_][A-Z0-9_]*\}/.test(rawUrl)) return null;
+    if (/[?&][a-z_]+=:[a-z]+(?:&|$)/i.test(rawUrl)) return null;
     let url: URL;
     try {
       url = new URL(rawUrl);
