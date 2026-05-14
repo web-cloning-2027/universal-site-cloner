@@ -64,10 +64,12 @@ export class Crawler {
       const entry = this.queue.pop();
       if (!entry) break;
       try {
-        await this.processOne(entry.url);
+        // R11 + canonical/raw split: navigate to the raw exemplar (real
+        // URL the server actually serves) but key terminal/dedupe state
+        // by the canonical form. Closes "placeholder-as-target" engine
+        // bug where the engine tried to fetch /diary.php?month=:m.
+        await this.processOne(entry.url, entry.rawUrl);
       } catch (err) {
-        // Hard error in the analyzer beyond retries — mark blocked,
-        // do not silently disappear (R11).
         const reason = (err as { message?: string })?.message || String(err);
         this.queue.markTerminal(entry.url, "blocked", reason);
         this.args.log.write({
@@ -97,17 +99,22 @@ export class Crawler {
     return { manifest, blockedCount: blocked };
   }
 
-  private async processOne(url: string): Promise<void> {
-    const nav = await this.nav.navigate(url, {
+  private async processOne(canonicalUrl: string, rawUrl: string): Promise<void> {
+    // Always navigate to the rawUrl exemplar; never to the canonical
+    // dedupe form (which contains ":id" / ":ts" placeholders the server
+    // rejects). Terminal-state, manifest, and log keys remain the
+    // canonical so dedupe semantics stay intact.
+    const navTarget = rawUrl || canonicalUrl;
+    const nav = await this.nav.navigate(navTarget, {
       maxRetries: this.args.crawlerConfig.maxRetries ?? 3,
       retryBackoffMs: this.args.crawlerConfig.retryBackoffMs ?? 500,
       timeoutMs: this.args.crawlerConfig.navigationTimeoutMs ?? 20000,
     }).catch((err: NavigationError) => {
-      this.queue.markTerminal(url, "blocked", err.message);
+      this.queue.markTerminal(canonicalUrl, "blocked", err.message);
       this.args.log.write({
         phase: "3.crawl",
         action: "nav-failed",
-        result: url,
+        result: canonicalUrl,
         reason: err.message,
       });
       return null;
@@ -127,26 +134,26 @@ export class Crawler {
 
       if (terminal === "captured") {
         const leaf = await this.args.analyzer.analyze({
-          url,
+          url: canonicalUrl,
           status: nav.status,
           page: nav.page,
         });
         this.leaves.push(leaf);
         for (const childUrl of leaf.childUrls || []) {
-          this.queue.push(childUrl, url);
+          this.queue.push(childUrl, canonicalUrl);
         }
-        this.queue.markTerminal(url, "captured");
+        this.queue.markTerminal(canonicalUrl, "captured");
         this.args.log.write({
           phase: "3.crawl",
           action: "url-captured",
-          result: url,
+          result: canonicalUrl,
         });
       } else {
-        this.queue.markTerminal(url, terminal, `status=${nav.status}`);
+        this.queue.markTerminal(canonicalUrl, terminal, `status=${nav.status}`);
         this.args.log.write({
           phase: "3.crawl",
           action: `url-${terminal}`,
-          result: url,
+          result: canonicalUrl,
         });
       }
     } finally {
