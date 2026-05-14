@@ -76,7 +76,8 @@
       "/aftersales_jobcard_list_print\\.php",
       "/invoice_print\\.php",
       "/pdi_actions_report_pdf\\.php",
-      "/quote_print\\.php"
+      "/quote_print\\.php",
+      "/image_manager/"
     ],
     "sectionLandingPatterns": [
       "^https://dms\\.myclickdealer\\.co\\.uk/$",

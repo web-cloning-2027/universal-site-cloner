@@ -12,6 +12,11 @@
  * site-specific selector here. If a site uses a fundamentally
  * different idiom, the gap shows up in the audit (missing-tab) and
  * is closed by extending this selector or adding a new tab strategy.
+ *
+ * Hard upper bound on total time AND total tabs visited prevents
+ * pages with thousands of tab-shaped buttons (image managers, file
+ * trees) from exhausting the per-URL budget on tab recursion alone.
+ * Closes the engine wedge surfaced by /image_manager/.
  */
 
 import type { Page } from "playwright";
@@ -20,16 +25,32 @@ import type { LeafTab } from "../manifest.js";
 const TAB_SELECTOR =
   "[role='tab'], .nav-tabs > li > a, .tabs > li > a, .tab-list > .tab";
 
+const DEFAULT_TIME_BUDGET_MS = 15_000;
+const DEFAULT_MAX_TABS_VISITED = 200;
+
 export interface RecurseTabsArgs {
   page: Page;
   depth: number;
   maxDepth: number;
+  /** Total wall-clock budget across recursion. Default 15s. */
+  timeBudgetMs?: number;
+  /** Cap on tabs visited; protects against fan-out explosions. Default 200. */
+  maxTabsVisited?: number;
+  /** Internal: set by the recursion to share counters / start time. */
+  _state?: { startedAt: number; visited: number };
 }
 
 export async function recurseTabs(args: RecurseTabsArgs): Promise<LeafTab[]> {
   if (args.depth >= args.maxDepth) return [];
-  const { page } = args;
+  const state =
+    args._state ?? { startedAt: Date.now(), visited: 0 };
+  const timeBudgetMs = args.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS;
+  const maxTabsVisited = args.maxTabsVisited ?? DEFAULT_MAX_TABS_VISITED;
 
+  if (Date.now() - state.startedAt > timeBudgetMs) return [];
+  if (state.visited >= maxTabsVisited) return [];
+
+  const { page } = args;
   const tabHandles = await page.$$(TAB_SELECTOR);
   if (tabHandles.length === 0) return [];
   const labels: string[] = [];
@@ -40,9 +61,12 @@ export async function recurseTabs(args: RecurseTabsArgs): Promise<LeafTab[]> {
 
   const out: LeafTab[] = [];
   for (let i = 0; i < tabHandles.length; i++) {
+    if (Date.now() - state.startedAt > timeBudgetMs) break;
+    if (state.visited >= maxTabsVisited) break;
     const label = labels[i]!;
     if (!label) continue;
     const handle = tabHandles[i]!;
+    state.visited++;
     try {
       await handle.click({ timeout: 2000 });
       await page.waitForTimeout(150);
@@ -50,6 +74,9 @@ export async function recurseTabs(args: RecurseTabsArgs): Promise<LeafTab[]> {
         page,
         depth: args.depth + 1,
         maxDepth: args.maxDepth,
+        timeBudgetMs,
+        maxTabsVisited,
+        _state: state,
       });
       out.push({ label, tabs: childTabs.length > 0 ? childTabs : undefined });
     } catch {
