@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "patterns": [
+    {
+      "pattern": "Workshop lift servicing",
+      "context": "shipped",
+      "addedBecauseOfGap": "GAP-25",
+      "rationale": "Generic mock-data filler that the V5 era engine emitted in name columns; later iterations banned it. Captured as one example of the workshop-theme leak class."
+    },
+    {
+      "pattern": "/(?:Annual MOT compliance|Brake pad replacement|Customer aftercare check|Stock photography upload|Finance application review)/",
+      "context": "shipped",
+      "addedBecauseOfGap": "GAP-25",
+      "rationale": "Workshop-themed filler strings that historically leaked into people-shaped columns. Generic ban: any shipped clone output that contains workshop-shop task names where a person's name should appear is wrong."
+    }
+  ]
+}

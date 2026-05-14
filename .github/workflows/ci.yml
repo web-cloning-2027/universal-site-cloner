@@ -3,9 +3,11 @@ name: CI
 on:
   push:
     branches:
+      - main
       - master
   pull_request:
     branches:
+      - main
       - master
 
 jobs:
@@ -34,3 +36,54 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # Universal Site Cloner additions
+  anti-patterns:
+    name: anti-pattern ban-list (R20)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node scripts/check-anti-patterns.mjs
+
+  genericity-audit:
+    name: genericity audit (R1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: forbid site-specific terms in src-engine/
+        # R1: src-engine/ must work on any website. The proving-ground
+        # name ("ClickDealer", "Keycloak", "myclickdealer") MUST NOT
+        # appear in any engine module — only in examples/.
+        run: |
+          if grep -rIEi "clickdealer|keycloak|myclickdealer" src-engine/ 2>/dev/null; then
+            echo "::error::Site-specific terms found in src-engine/. R1 violation."
+            exit 1
+          else
+            echo "OK — no site-specific terms in src-engine/"
+          fi
+
+  prompt-tests:
+    name: prompt self-tests (R17)
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: gate on api key presence
+        id: gate
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::ANTHROPIC_API_KEY not configured — skipping prompt self-tests"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.skip == 'false'
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+        if: steps.gate.outputs.skip == 'false'
+      - run: npm run test:prompts
+        if: steps.gate.outputs.skip == 'false'

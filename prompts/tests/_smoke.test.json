@@ -1,0 +1,7 @@
+[
+  {
+    "name": "echo-ping-pong",
+    "input": { "ping": "hello-engine" },
+    "expect": { "predicate": "result.pong === input.ping", "description": "pong echoes ping" }
+  }
+]
