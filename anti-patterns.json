@@ -5,13 +5,61 @@
       "pattern": "Workshop lift servicing",
       "context": "shipped",
       "addedBecauseOfGap": "GAP-25",
-      "rationale": "Generic mock-data filler that the V5 era engine emitted in name columns; later iterations banned it. Captured as one example of the workshop-theme leak class."
+      "rationale": "Generic mock-data filler the V5 era engine emitted in name columns; later iterations banned it. Captured as one example of the workshop-theme leak class."
     },
     {
       "pattern": "/(?:Annual MOT compliance|Brake pad replacement|Customer aftercare check|Stock photography upload|Finance application review)/",
       "context": "shipped",
       "addedBecauseOfGap": "GAP-25",
       "rationale": "Workshop-themed filler strings that historically leaked into people-shaped columns. Generic ban: any shipped clone output that contains workshop-shop task names where a person's name should appear is wrong."
+    },
+    {
+      "pattern": "/<th[^>]*>(?:[A-Z][a-z]+){2,}<\\/th>/",
+      "context": "shipped",
+      "addedBecauseOfGap": "V8-prior:column-label-whitespace",
+      "rationale": "Concatenated PascalCase column header (e.g. ResetEmail, UserLevel) — symptom of stripped whitespace between words. Live captured 'Reset Email' as two tokens; the V6/V7 era rendered it as one. Generic class: any shipped <th> containing 2+ camel-glued words is a label-whitespace regression."
+    },
+    {
+      "pattern": "/<table[^>]*>\\s*<thead>\\s*<\\/thead>\\s*<tbody>\\s*<\\/tbody>\\s*<\\/table>/",
+      "context": "shipped",
+      "addedBecauseOfGap": "V8-prior:empty-wrapper-tables",
+      "rationale": "Empty wrapper table — V7 era saw the renderer emit a 1x1 layout-wrapper alongside the real grid. Generic class: any shipped <table> with empty thead and empty tbody is a duplicate-wrapper regression."
+    },
+    {
+      "pattern": "Above Average",
+      "context": "shipped",
+      "addedBecauseOfGap": "V8-prior:input-kind-vs-value-mismatch",
+      "rationale": "Performance-rating string that leaked into checkbox-shaped columns (Add Vehicle / Confirm Sale / etc.). V8's audit Gate 16 caught this; CI seeds the ban so any shipped clone HTML containing 'Above Average' OUTSIDE a performance-dashboard context is wrong. NOTE: legitimate performance columns will need to allowlist this string when audit Gate 16 lands."
+    },
+    {
+      "pattern": "/<td[^>]*>\\s*Roy Sharf\\s*<\\/td>\\s*<td[^>]*>\\s*Roy Sharf/",
+      "context": "shipped",
+      "addedBecauseOfGap": "V8-prior:salesperson-name-in-checkbox-col",
+      "rationale": "The same person's name leaking into Active Salesperson / Default Salesperson / Manager columns simultaneously is the canonical input-kind-vs-value mismatch signature. Generic class: two consecutive <td> with identical full-name content in user-admin tables."
+    },
+    {
+      "pattern": "/<th[^>]*>(?:Add Vehicle|Confirm Sale|Change Price|Cancel Order|Show SIV|Two[-\\s]?Factor|Active Sales|Default Sales|Performance (?:Admin|Targets)|Block|Hide Purchase)<\\/th>(?:[\\s\\S](?!<input))*?<td[^>]*>(?:[A-Z][a-z]+ ){1,3}[A-Z][a-z]+<\\/td>/",
+      "context": "shipped",
+      "addedBecauseOfGap": "V8-prior:checkbox-label-rendered-as-name",
+      "rationale": "A checkbox-shaped column header (Add Vehicle / Confirm Sale / etc.) followed by a multi-word person name in the corresponding td. Generic class: action-verb header + name value is a kind mismatch. (R20: the regex is conservative; false positives unlikely in shipped clone HTML.)"
+    },
+    {
+      "pattern": "/(?:Please Note|info-banner|notice-banner)[\\s\\S]{1,200}?(?:role=\"alert\"\\s)?[\\s\\S]{0,100}/",
+      "context": "manifest",
+      "addedBecauseOfGap": "V8-prior:missing-info-banner",
+      "rationale": "Capture-time check: a live manifest leaf with a 'Please Note' paragraph in its DOM should produce a pageInfoBanners entry. This regex pattern is observational only — failure to match is normal; presence indicates banner content was captured."
+    },
+    {
+      "pattern": "/<td[^>]*>(?:£|\\$|€)?(?:--|—|N\\/A|\\s*)<\\/td>/",
+      "context": "manifest",
+      "addedBecauseOfGap": "V8-prior:currency-col-without-digits",
+      "rationale": "Manifest cell that is empty-but-currency-shaped (em-dash, --, N/A). Generic class: column-semantic-mismatch where a currency column renders no digits. Pattern is observational; the audit's column-semantic check uses it to find candidate offenders."
+    },
+    {
+      "pattern": "/<td[^>]*>(?!\\d{1,4}[/-]\\d{1,2})(?:Today|Yesterday|\\d+ days? ago|\\d+ weeks? ago|\\w+){1,2}<\\/td>/",
+      "context": "manifest",
+      "addedBecauseOfGap": "V8-prior:date-col-without-date",
+      "rationale": "Manifest cell in a date-shaped column that doesn't match any of the V8 date patterns. Generic class: column-semantic mismatch where a date column shows a non-date value. Pattern is observational."
     }
   ]
 }

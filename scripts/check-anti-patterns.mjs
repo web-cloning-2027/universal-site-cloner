@@ -1,17 +1,21 @@
 #!/usr/bin/env node
 /**
- * R20 enforcement: grep the repo for any pattern in anti-patterns.json.
- * Run from CI on every push. Exits non-zero on any match.
+ * R20 enforcement: walks the repo and tests every file's content
+ * against each pattern in anti-patterns.json. Exits non-zero on any
+ * match.
  *
  * Scope per pattern.context:
- *   "src"      → grep src-engine/ src/ scripts/
- *   "manifest" → grep wet-test-output/**.json if it exists
- *   "shipped"  → grep wet-test-output/ + src/ + src-engine/
+ *   "src"      → src-engine/, src/, scripts/
+ *   "manifest" → wet-test-output/**.json
+ *   "shipped"  → wet-test-output/ + src/ + src-engine/
+ *
+ * Uses Node's RegExp (full JS regex) instead of grep, so non-capturing
+ * groups and lookarounds work. Per R20 the list is monotonic-grow —
+ * this script only enforces, never relaxes.
  */
 
-import { execSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -26,46 +30,80 @@ const scopes = {
   shipped: ["src/", "src-engine/", "scripts/", "wet-test-output/"],
 };
 
+const TEXT_EXTS = new Set([
+  ".ts", ".tsx", ".js", ".mjs", ".jsx", ".json", ".md", ".html", ".css", ".yml", ".yaml",
+]);
+
+function walk(dir, out = []) {
+  if (!existsSync(dir)) return out;
+  let entries;
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return out;
+  }
+  for (const name of entries) {
+    if (name === "node_modules" || name === ".next" || name === ".git") continue;
+    const p = resolve(dir, name);
+    let s;
+    try {
+      s = statSync(p);
+    } catch {
+      continue;
+    }
+    if (s.isDirectory()) walk(p, out);
+    else if (s.isFile() && TEXT_EXTS.has(extname(name))) out.push(p);
+  }
+  return out;
+}
+
+function compilePattern(raw) {
+  if (raw.startsWith("/") && raw.endsWith("/") && raw.length > 2) {
+    return new RegExp(raw.slice(1, -1));
+  }
+  // Literal — escape regex metachars.
+  const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(escaped);
+}
+
 let total = 0;
 let failed = 0;
 
 for (const p of cfg.patterns) {
-  const targets = (scopes[p.context] || scopes.shipped).filter((dir) =>
-    existsSync(resolve(repoRoot, dir)),
-  );
-  if (targets.length === 0) continue;
-
-  // Detect regex form /.../ vs. literal
-  let useRegex = false;
-  let raw = p.pattern;
-  if (raw.startsWith("/") && raw.endsWith("/") && raw.length > 2) {
-    useRegex = true;
-    raw = raw.slice(1, -1);
-  }
-
-  const flag = useRegex ? "-E" : "-F";
-  const args = [
-    "grep",
-    "-rI",
-    flag,
-    "--",
-    JSON.stringify(raw),
-    ...targets,
-  ].join(" ");
-
-  let output = "";
-  try {
-    output = execSync(args, { cwd: repoRoot, encoding: "utf-8" });
-  } catch (err) {
-    // grep exits 1 when no match — that's success for us.
-    output = err.stdout ? err.stdout.toString() : "";
-  }
-
   total++;
-  if (output.trim().length > 0) {
+  const targets = (scopes[p.context] || scopes.shipped)
+    .map((rel) => resolve(repoRoot, rel))
+    .filter(existsSync);
+  if (targets.length === 0) continue;
+  let re;
+  try {
+    re = compilePattern(p.pattern);
+  } catch (err) {
+    console.error(`pattern "${p.pattern}" is invalid: ${String(err)}`);
     failed++;
-    console.error(`MATCH for anti-pattern "${p.pattern}" (gap ${p.addedBecauseOfGap}):`);
-    console.error(output);
+    continue;
+  }
+  const matched = [];
+  for (const dir of targets) {
+    for (const file of walk(dir)) {
+      // Don't recurse into anti-patterns.json itself.
+      if (file.endsWith("anti-patterns.json")) continue;
+      let body;
+      try {
+        body = readFileSync(file, "utf-8");
+      } catch {
+        continue;
+      }
+      if (re.test(body)) matched.push(file.slice(repoRoot.length + 1));
+    }
+  }
+  if (matched.length > 0) {
+    failed++;
+    console.error(
+      `MATCH for anti-pattern "${p.pattern}" (gap ${p.addedBecauseOfGap}) in:`,
+    );
+    for (const f of matched.slice(0, 10)) console.error(`  ${f}`);
+    if (matched.length > 10) console.error(`  ... and ${matched.length - 10} more`);
     console.error("---");
   }
 }
