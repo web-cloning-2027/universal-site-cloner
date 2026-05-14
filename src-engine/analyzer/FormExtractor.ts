@@ -28,7 +28,7 @@ const PANEL_SELECTOR =
   "main [role='group']";
 
 export async function extractForm(page: Page): Promise<FormSection[]> {
-  const script = `
+  const script = `(() => {
     ${TEXT_HELPERS}
     function labelFor(input) {
       // <label for=...>, ancestor <label>, aria-labelledby, aria-label, placeholder
@@ -89,6 +89,6 @@ export async function extractForm(page: Page): Promise<FormSection[]> {
         fields: inputs.map(describeField),
       };
     }).filter(p => p.fields.length > 0);
-  `;
+  })()`;
   return (await page.evaluate(script)) as FormSection[];
 }

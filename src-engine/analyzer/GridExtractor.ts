@@ -9,7 +9,7 @@ import { TEXT_HELPERS } from "./text.js";
 import type { DataGrid } from "../manifest.js";
 
 export async function extractGrids(page: Page): Promise<DataGrid[]> {
-  const script = `
+  const script = `(() => {
     ${TEXT_HELPERS}
     const tables = [...document.querySelectorAll("main table")];
     return tables.map(t => {
@@ -43,7 +43,7 @@ export async function extractGrids(page: Page): Promise<DataGrid[]> {
         firstRows,
       };
     }).filter(g => g.columns.length > 0);
-  `;
+  })()`;
   const tables = (await page.evaluate(script)) as DataGrid[];
   return mergeNearDuplicates(tables);
 }

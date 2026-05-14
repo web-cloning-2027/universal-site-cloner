@@ -22,7 +22,7 @@ import type { Button, ButtonKind } from "../manifest.js";
 const DOWNLOAD_EXT_RE = /\.(?:csv|xlsx?|pdf|zip|docx?|pptx?|xml|json)$/i;
 
 export async function probeButtons(page: Page): Promise<Button[]> {
-  const script = `
+  const script = `(() => {
     function spaceyText(el) {
       if (!el) return "";
       const clone = el.cloneNode(true);
@@ -72,7 +72,7 @@ export async function probeButtons(page: Page): Promise<Button[]> {
       out.push({ label: text, kind, destination });
     }
     return out;
-  `;
+  })()`;
   const raw = (await page.evaluate(script)) as Array<{
     label: string;
     kind: ButtonKind;

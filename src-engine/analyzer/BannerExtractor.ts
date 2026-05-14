@@ -23,7 +23,7 @@ const BANNER_SELECTOR =
   "main [class*='info-banner' i]";
 
 export async function extractBanners(page: Page): Promise<PageInfoBanner[]> {
-  const script = `
+  const script = `(() => {
     ${TEXT_HELPERS}
     function levelOf(el) {
       const cls = (el.className || "") + " " + (el.getAttribute("role") || "");
@@ -48,6 +48,6 @@ export async function extractBanners(page: Page): Promise<PageInfoBanner[]> {
       }
     }
     return out;
-  `;
+  })()`;
   return (await page.evaluate(script)) as PageInfoBanner[];
 }
