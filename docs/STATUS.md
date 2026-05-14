@@ -26,16 +26,19 @@ let its known gaps (35-140 found in audit-v7) propagate silently.
 | 0 — workspace + repo + .gitignore | ✅ pushed | template history preserved as commit #1; remote=web-cloning-2027/universal-site-cloner |
 | 1 — notes/01..03 | ✅ in `docs/research/notes/` | template audit, baseline-vs-gold catalog (30 GAP-NN rows), V1-V8 synthesis, engine design |
 | 2.0 — judge infra + anti-patterns + CI | ✅ pushed | `src-engine/judge/` (dispatcher, cache, schema validation, retry, failure dump); `anti-patterns.json`; CI jobs (anti-pattern grep, genericity audit, prompt self-tests) |
-| 2 — auth strategies | 🚧 next | NoAuth, BasicAuth, CookieJarAuth, KeycloakHandoffAuth |
-| 2 — Queue + Navigator + Crawler | 🚧 pending | BFS, allowlist, `:id` dedupe, resumable, exponential-backoff retry, terminal-state tracking |
-| 2 — Analyzer (Leaf/Form/Grid/Tab/Button/ActionMenu) | 🚧 pending | shape classifier + extractors + recursive tab walker |
-| 2 — Renderer (Scaffold + shapes) | 🚧 pending | emits Next.js routes + components per manifest |
-| 2 — Audit/Diff + initial checks | 🚧 pending | check files in `src-engine/audit/checks/` |
-| 2 — CLI | 🚧 pending | `universal-site-cloner clone <config>` + `audit <clone-dir> <gold-dir>` |
-| 3 — cold wet-test vs ClickDealer | ⏳ blocked on Phase 2 (analyzer depth) | needs Keycloak one-shot auth handoff (R7b). Output: `live-manifest.json`, `clone/`, `queue-state.json` atomically (R4). |
-| 4 — diff engine clone vs same-run live | ⏳ blocked on Phase 3 | `audit --clone <dir> --live <path>` (R4); optional `--reference <hand-clone>` is report-only |
-| 5 — loop until cleanRuns=2 | ⏳ blocked on Phase 4 | max 24h; sticky-gap breaker via `scope-remediation` prompt; gap classification ∈ {ENGINE-GAP, CONFIG-GAP, LIVE-VOLATILE} (no "gold-quirk" — R4) |
-| 6 — PROOF-OF-CLEAN.md | ⏳ blocked on Phase 5 | six-line YES-only summary; line 1 = "DIFFED ZERO GAPS VS LIVE SITE: YES" |
+| 2 — auth strategies (4 impls) | ✅ pushed | NoAuth, BasicAuth, CookieJarAuth, KeycloakHandoffAuth (one-shot R7b handoff, persists `~/.config/universal-site-cloner-sessions/<name>/state.json`) |
+| 2 — Queue + Navigator + Crawler | ✅ pushed | BFS, allowlist regex, `:id` dedupe, resumable durable state (R12), exponential-backoff retry, full terminal-state tracking (R11) |
+| 2 — Analyzer (8 modules) | ✅ pushed | LeafAnalyzer + FormExtractor + GridExtractor (with Jaccard ≥0.85 merge) + BannerExtractor + TabRecursor + ButtonProbe + ActionMenuProbe + classifyShape |
+| 2 — Renderer (Scaffold + 5 shape templates) | ✅ pushed | emits Next.js routes + components per manifest; copies shape templates verbatim into output |
+| 2 — Audit/Diff + 3 initial checks | ✅ pushed (R4-compliant) | `Diff.ts` + `checks/{url-coverage, shape-parity, grid-columns}.ts`; auto-loads via dynamic import; **diff target = LIVE-from-same-run, not hand-clone (R4)** |
+| 2 — CLI | ✅ pushed (R4-compliant) | `clone <config> --out <dir> [--fresh]` + `audit --clone <dir> --live <path> [--reference <dir>] [--report-only] [--out <path>]` |
+| 2 — examples + scope-remediation prompt | ✅ pushed | `examples/clickdealer.config.json` + `examples/simple-static-site.config.json`; `prompts/scope-remediation.md` + schema + test (action enum includes `mark-live-volatile`, not `mark-gold-quirk` per R4) |
+| **3.1 — auth pre-check (R7b one-shot if needed)** | 🚧 **now** | verify `~/.config/universal-site-cloner-sessions/clickdealer/state.json`; probe `/dealers/users` → 200 + sidebar; re-handoff if stale (8-12h SSO rotation) |
+| 3.2 — cold wet-test invocation | ⏳ blocked on 3.1 | `rm -rf wet-test-output/`; emit 3 artifacts atomically: `live-manifest.json`, `clone/`, `queue-state.json`; expect 3-8h first run |
+| 3.3 — completion check | ⏳ blocked on 3.2 | `queue-state.json` blocked count must be 0 (R11) |
+| 4 — diff engine clone vs same-run live | ⏳ blocked on Phase 3 | `audit --clone wet-test-output/clone --live wet-test-output/live-manifest.json`; **P4.2 R4 integrity check** before Phase 5 starts |
+| 5 — loop until cleanRuns=2 | ⏳ blocked on Phase 4 | R10 check-first discipline (add check → confirm fail → fix → confirm pass); sticky-threshold=2 on first cold run, 3 thereafter; gap classification ∈ {ENGINE-GAP, CONFIG-GAP, LIVE-VOLATILE} (no "gold-quirk" — R4) |
+| 6 — PROOF-OF-CLEAN.md | ⏳ blocked on Phase 5 | seven-line YES-only summary; line 1 = "DIFFED ZERO GAPS VS LIVE SITE: YES" |
 
 ## How to resume
 

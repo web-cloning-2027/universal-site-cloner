@@ -101,6 +101,7 @@ export class Crawler {
     const nav = await this.nav.navigate(url, {
       maxRetries: this.args.crawlerConfig.maxRetries ?? 3,
       retryBackoffMs: this.args.crawlerConfig.retryBackoffMs ?? 500,
+      timeoutMs: this.args.crawlerConfig.navigationTimeoutMs ?? 20000,
     }).catch((err: NavigationError) => {
       this.queue.markTerminal(url, "blocked", err.message);
       this.args.log.write({

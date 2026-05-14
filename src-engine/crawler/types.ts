@@ -58,6 +58,8 @@ export interface CrawlerConfig {
   /** Initial backoff ms; doubles per retry. */
   retryBackoffMs?: number;
   maxRetries?: number;
+  /** Per-URL navigation timeout in ms. Default 20000. */
+  navigationTimeoutMs?: number;
   /** Force serial navigation (no per-URL parallelism). Default true. */
   serial?: boolean;
 }
