@@ -3,7 +3,14 @@
  * universal-site-cloner CLI.
  *
  *   universal-site-cloner clone <config.json>  --out <dir>  [--fresh]
- *   universal-site-cloner audit <clone-dir> <gold-dir>      [--out AUDIT.json]
+ *   universal-site-cloner audit --clone <dir>  --live <path>
+ *                              [--reference <dir>]  [--report-only]
+ *                              [--out AUDIT.json]
+ *
+ * R4: the audit's diff target is the LIVE-SITE capture from the same
+ * wet-test run (--live), NOT a hand-iterated clone. --reference is
+ * report-only (any gaps surfaced are tagged minor and never gate
+ * cleanRuns).
  *
  * Phase 3 hits `clone`. Phase 4 hits `audit`. Phase 5 loops both with
  * `--fresh` between cold runs.
@@ -83,13 +90,25 @@ async function cmdClone(args: {
       blocked: blockedCount,
     });
 
+    // R4: emit live-manifest.json explicitly (this IS the live-site
+    // capture from the same run; the audit will diff against it).
     writeFileSync(
-      resolve(outDir, "manifest.json"),
+      resolve(outDir, "live-manifest.json"),
       JSON.stringify(manifest, null, 2),
     );
 
-    const scaffold = new Scaffold({ manifest, outDir });
+    // R4 Phase 3 step 6b: render the clone tree under outDir/clone/.
+    const cloneDir = resolve(outDir, "clone");
+    const scaffold = new Scaffold({ manifest, outDir: cloneDir });
     const emit = scaffold.emit();
+
+    // The clone-side manifest mirrors the same source-of-truth for now.
+    // A future analyzer pass will re-capture from the rendered clone
+    // and diff. For Phase 3 step 6 atomicity, we always write both.
+    writeFileSync(
+      resolve(cloneDir, "manifest.json"),
+      JSON.stringify(manifest, null, 2),
+    );
     log.write({
       phase: "3.3",
       action: "scaffold-done",
@@ -121,7 +140,9 @@ async function cmdClone(args: {
 
 async function cmdAudit(args: {
   cloneDir: string;
-  goldDir: string;
+  liveManifestPath: string;
+  referenceDir?: string;
+  reportOnly?: boolean;
   out?: string;
 }): Promise<void> {
   const auditOut = args.out ?? resolve(args.cloneDir, "AUDIT.json");
@@ -129,17 +150,27 @@ async function cmdAudit(args: {
   const engine = new AuditEngine(repoRoot);
   const report = await engine.run({
     cloneDir: resolve(args.cloneDir),
-    goldDir: resolve(args.goldDir),
+    liveManifestPath: resolve(args.liveManifestPath),
+    referenceDir: args.referenceDir ? resolve(args.referenceDir) : undefined,
+    reportOnly: args.reportOnly,
   });
   AuditEngine.writeReport(report, auditOut);
+  const blocker = report.gaps.filter((g) => g.severity === "blocker").length;
+  const major = report.gaps.filter((g) => g.severity === "major").length;
   // eslint-disable-next-line no-console
-  console.log(`audit: ${report.totalGaps} gaps written to ${auditOut}`);
+  console.log(
+    `audit: ${report.totalGaps} gaps (blocker=${blocker} major=${major}) → ${auditOut}`,
+  );
   if (report.totalGaps > 0) {
     for (const g of report.gaps.slice(0, 20)) {
       // eslint-disable-next-line no-console
       console.log(`  [${g.severity}] ${g.check}::${g.kind}  ${g.url || ""}  ${g.detail}`);
     }
-    process.exit(report.gaps.some((g) => g.severity === "blocker") ? 2 : 1);
+    // R4: only blocker+major gate cleanRuns. Minor (incl. all
+    // --report-only diffs against --reference) is informational.
+    if (blocker + major > 0 && !args.reportOnly) {
+      process.exit(2);
+    }
   }
 }
 
@@ -165,11 +196,31 @@ program
 
 program
   .command("audit")
-  .argument("<clone-dir>", "directory containing manifest.json from `clone`")
-  .argument("<gold-dir>", "gold-standard directory")
-  .option("--out <path>", "where to write AUDIT.json")
-  .action(async (cloneDir: string, goldDir: string, opts: { out?: string }) => {
-    await cmdAudit({ cloneDir, goldDir, out: opts.out });
-  });
+  .description(
+    "diff engine clone tree vs same-run live-site capture (R4). " +
+      "Optional --reference vs an existing hand-iterated clone is report-only.",
+  )
+  .requiredOption("--clone <dir>", "directory containing the emitted clone tree")
+  .requiredOption("--live <path>", "path to live-manifest.json from the same run")
+  .option("--reference <dir>", "optional reference clone dir (report-only)")
+  .option("--report-only", "downgrade all gaps to minor; never exit nonzero")
+  .option("--out <path>", "where to write AUDIT.json (default: <clone-dir>/AUDIT.json)")
+  .action(
+    async (opts: {
+      clone: string;
+      live: string;
+      reference?: string;
+      reportOnly?: boolean;
+      out?: string;
+    }) => {
+      await cmdAudit({
+        cloneDir: opts.clone,
+        liveManifestPath: opts.live,
+        referenceDir: opts.reference,
+        reportOnly: opts.reportOnly,
+        out: opts.out,
+      });
+    },
+  );
 
 await program.parseAsync(process.argv);

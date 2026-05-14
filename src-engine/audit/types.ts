@@ -1,7 +1,14 @@
 /**
- * Audit data model. The `audit` CLI subcommand reads a wet-test
- * output dir + a gold-standard dir, runs every registered check,
- * and writes AUDIT.json.
+ * Audit data model.
+ *
+ * R4: the diff target is the LIVE SITE captured in the same wet-test
+ * run, NOT a hand-iterated reference clone. The CheckContext exposes:
+ *   - cloneManifest: engine-emitted clone manifest (from wet-test-output/clone/)
+ *   - liveManifest:  live-site capture from the SAME run (from wet-test-output/live-manifest.json)
+ *   - referenceManifest?: an existing clone (e.g. clickdealer-clone) — REPORT-ONLY (R4)
+ *
+ * Checks compare cloneManifest ↔ liveManifest. Any check that touches
+ * referenceManifest is opt-in and CANNOT gate cleanRuns.
  */
 
 import type { Manifest } from "../manifest.js";
@@ -23,7 +30,8 @@ export interface Gap {
 export interface AuditReport {
   generatedAt: string;
   cloneDir: string;
-  goldDir: string;
+  liveManifestPath: string;
+  referenceDir?: string;
   totalGaps: number;
   perCheck: Record<string, number>;
   gaps: Gap[];
@@ -31,9 +39,13 @@ export interface AuditReport {
 
 export interface CheckContext {
   cloneManifest: Manifest;
-  goldManifest: Manifest | null;
+  /** R4: live capture from the same wet-test run. */
+  liveManifest: Manifest;
+  /** Optional reference clone manifest (e.g. clickdealer-clone). Report-only (R4). */
+  referenceManifest?: Manifest | null;
   cloneDir: string;
-  goldDir: string;
+  liveManifestPath: string;
+  referenceDir?: string;
 }
 
 export interface Check {
@@ -41,9 +53,8 @@ export interface Check {
   /** "what gap class does this check catch?" — one line. */
   readonly description: string;
   /**
-   * Run the check and return any gaps. Throwing is forbidden — the
-   * dispatcher unwraps errors and treats them as `blocker` gaps with
-   * the check name as the cause.
+   * Run the check. Throwing is forbidden — the dispatcher catches
+   * and converts to a `blocker` gap with the check name as the cause.
    */
   run(ctx: CheckContext): Promise<Gap[]>;
 }

@@ -10,7 +10,7 @@
         "fix-engine-module",
         "add-judge-prompt",
         "update-site-config",
-        "mark-gold-quirk"
+        "mark-live-volatile"
       ]
     },
     "confidence": {
@@ -47,12 +47,21 @@
         "patch": { "type": "object" }
       }
     },
-    "markGoldQuirk": {
+    "markLiveVolatile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["urls", "rationale"],
+      "required": ["urls", "signature", "rationale"],
       "properties": {
         "urls": { "type": "array", "items": { "type": "string" } },
+        "signature": {
+          "type": "object",
+          "description": "Class-level matcher the audit should use instead of the literal volatile string.",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "type": "string", "enum": ["ago-string", "timestamp", "csrf-token", "session-id", "random-id", "regex"] },
+            "regex": { "type": "string" }
+          }
+        },
         "rationale": { "type": "string", "minLength": 10 }
       }
     }
@@ -71,8 +80,8 @@
       "then": { "required": ["updateSiteConfig"] }
     },
     {
-      "if": { "properties": { "action": { "const": "mark-gold-quirk" } } },
-      "then": { "required": ["markGoldQuirk"] }
+      "if": { "properties": { "action": { "const": "mark-live-volatile" } } },
+      "then": { "required": ["markLiveVolatile"] }
     }
   ]
 }

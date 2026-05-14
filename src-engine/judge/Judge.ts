@@ -22,7 +22,17 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { Ajv, type ValidateFunction } from "ajv";
-import addFormats from "ajv-formats";
+import * as ajvFormatsModule from "ajv-formats";
+// ajv-formats CJS export shape varies between versions (default export
+// vs. named). Resolve at runtime via unknown to avoid TS strict-mode
+// complaining about either shape.
+const ajvFormatsAny = ajvFormatsModule as unknown as
+  | ((a: Ajv) => Ajv)
+  | { default: (a: Ajv) => Ajv };
+const addFormats: (a: Ajv) => Ajv =
+  typeof ajvFormatsAny === "function"
+    ? (ajvFormatsAny as (a: Ajv) => Ajv)
+    : (ajvFormatsAny as { default: (a: Ajv) => Ajv }).default;
 
 import { JudgeCache, canonicalJson } from "./cache.js";
 import {

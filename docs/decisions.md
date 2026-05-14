@@ -54,6 +54,32 @@ class (gap GAP-25). Future regressions add more entries (R20:
 monotonic-grow). The entries are phrased as a CLASS of wrong output,
 not site-specific strings.
 
+## 2026-05-14: R4 course correction — diff target is the live site
+
+Roy updated R4 mid-build. Previously the engine was to be validated by
+diffing against the hand-iterated `clickdealer-clone`. That target
+masks real engine bugs because the hand-clone itself has 35-140
+documented gaps (audit-v7 runs).
+
+**Decision**: every audit invocation compares the engine's emitted
+clone tree to the LIVE SITE capture produced in the SAME wet-test
+run. The hand-clone is informational only — pass via `--reference
+<dir>` and only with `--report-only`, which downgrades every gap
+to minor and never exits nonzero.
+
+**Implication**: the previous "gold-quirk" classification is gone.
+`scope-remediation` returns `mark-live-volatile` instead, with a
+class-level signature (ago-string / timestamp / csrf-token / random-id
+/ regex) that the audit can match without needing the literal string.
+
+**Pre-existing notes that needed re-evaluation**: none of the
+prior decisions above classify anything as "gold-quirk", so nothing
+needs to be deleted. `notes/01b-baseline-run.md`'s "baseline vs
+gold" terminology is now misleading and should be re-read as
+"baseline vs LIVE" — the synthesis still applies because every gap
+in it is a thing the engine must close vs the live site, regardless
+of what the hand-clone does.
+
 ## 2026-05-14: only `_smoke` prompt exists at Phase 2.0
 
 Per R17: a prompt is added "only because a Phase 1 / Phase 5 gap

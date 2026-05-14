@@ -7,10 +7,17 @@ off?" — anyone resuming the build pulls this first.
 
 Build the generic web-cloning engine specified in the NEW-GENERIC-CLONER-REPO
 prompt. Proving ground: ClickDealer DMS. Termination: two consecutive
-cold wet-test runs against the gold-standard clone at
-`/Users/roysharf/Desktop/websitr cloaning/clickdealer-clone` produce
-zero gaps, with R18 end-state verification (zero TODOs, zero blocked,
-zero judge-failures, two clean cold runs).
+cold wet-test runs where the engine-emitted clone tree diffs zero gaps
+against the LIVE SITE capture from the SAME run (R4), with R18 end-state
+verification (zero TODOs, zero blocked, zero judge-failures, two clean
+cold runs).
+
+**R4 update (2026-05-14)**: the existing hand-iterated
+`/Users/roysharf/Desktop/websitr cloaning/clickdealer-clone` is a
+LEARNING REFERENCE ONLY — never the pass/fail target. The diff
+compares the engine's clone tree against the live-manifest.json
+captured in the same wet-test invocation. Using the hand-clone would
+let its known gaps (35-140 found in audit-v7) propagate silently.
 
 ## Phase board
 
@@ -25,10 +32,10 @@ zero judge-failures, two clean cold runs).
 | 2 — Renderer (Scaffold + shapes) | 🚧 pending | emits Next.js routes + components per manifest |
 | 2 — Audit/Diff + initial checks | 🚧 pending | check files in `src-engine/audit/checks/` |
 | 2 — CLI | 🚧 pending | `universal-site-cloner clone <config>` + `audit <clone-dir> <gold-dir>` |
-| 3 — cold wet-test vs ClickDealer | ⏳ blocked on Phase 2 | needs Keycloak one-shot auth handoff (R7b, only ask Roy this once) |
-| 4 — diff vs gold | ⏳ blocked on Phase 3 | `audit/Diff` produces `wet-test-output/AUDIT.json` |
-| 5 — loop until cleanRuns=2 | ⏳ blocked on Phase 4 | max 24h; sticky-gap breaker via `scope-remediation` prompt |
-| 6 — PROOF-OF-CLEAN.md | ⏳ blocked on Phase 5 | six-line YES-only summary |
+| 3 — cold wet-test vs ClickDealer | ⏳ blocked on Phase 2 (analyzer depth) | needs Keycloak one-shot auth handoff (R7b). Output: `live-manifest.json`, `clone/`, `queue-state.json` atomically (R4). |
+| 4 — diff engine clone vs same-run live | ⏳ blocked on Phase 3 | `audit --clone <dir> --live <path>` (R4); optional `--reference <hand-clone>` is report-only |
+| 5 — loop until cleanRuns=2 | ⏳ blocked on Phase 4 | max 24h; sticky-gap breaker via `scope-remediation` prompt; gap classification ∈ {ENGINE-GAP, CONFIG-GAP, LIVE-VOLATILE} (no "gold-quirk" — R4) |
+| 6 — PROOF-OF-CLEAN.md | ⏳ blocked on Phase 5 | six-line YES-only summary; line 1 = "DIFFED ZERO GAPS VS LIVE SITE: YES" |
 
 ## How to resume
 
@@ -59,10 +66,12 @@ Lives at `docs/decisions.md`. Major decisions so far:
 ## R18 end-state verification (engine isn't done until all 4 pass)
 
 ```sh
-grep -rIE "TODO|FIXME|XXX|HACK|Roy to verify|needs review|manual pass|to be reviewed|spot-check" src/ docs/ scripts/ examples/
+grep -rIE "TODO|FIXME|XXX|HACK|Roy to verify|needs review|manual pass|to be reviewed|spot-check" src/ src-engine/ docs/ scripts/ examples/
 # → zero matches
 
-jq '.gaps | length' "$WORKDIR/wet-test-output/AUDIT.json"
+# R4: AUDIT.json comes from `audit --clone <dir> --live <live-manifest.json>`,
+# i.e. engine clone vs same-run live capture. Not vs the hand clone.
+jq '.gaps | length' "$WORKDIR/wet-test-output/clone/AUDIT.json"
 # → 0
 
 jq '[.[] | select(.terminalState=="blocked")] | length' "$WORKDIR/wet-test-output/queue-state.json"

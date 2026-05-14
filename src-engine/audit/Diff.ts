@@ -1,13 +1,17 @@
 /**
- * Audit dispatcher. Loads every check file from
- * src-engine/audit/checks/ and runs them in parallel against
- * (cloneManifest, goldManifest).
+ * Audit dispatcher.
  *
- * R10: the check set grows monotonically. Each new check lives in
- * its own file under checks/, with a leading comment that names the
- * gap class it catches. Adding a check is preferred to extending an
- * existing one — pull-request reviewers should be able to see "what
- * new gap class did this run learn about?" at a glance.
+ * R4: takes the engine's emitted clone manifest + the live-site
+ * manifest captured in the SAME wet-test run. Optional reference
+ * manifest (e.g. an existing hand-iterated clone) is REPORT-ONLY
+ * and never gates cleanRuns.
+ *
+ * Loads every check file from src-engine/audit/checks/ and runs them
+ * in sequence against (cloneManifest, liveManifest, referenceManifest?).
+ *
+ * R10: the check set grows monotonically. Each new check lives in its
+ * own file under checks/, with a leading comment that names the gap
+ * class it catches.
  */
 
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -51,16 +55,24 @@ export class AuditEngine {
 
   async run(args: {
     cloneDir: string;
-    goldDir: string;
+    liveManifestPath: string;
+    referenceDir?: string;
+    /** When true, skip the live comparison and only run reference checks. */
+    reportOnly?: boolean;
   }): Promise<AuditReport> {
-    const cloneManifest = readManifest(args.cloneDir);
-    const goldManifest = readManifestOrNull(args.goldDir);
+    const cloneManifest = readManifestFromDir(args.cloneDir);
+    const liveManifest = readManifestFromPath(args.liveManifestPath);
+    const referenceManifest = args.referenceDir
+      ? readManifestFromDirOrNull(args.referenceDir)
+      : null;
 
     const ctx: CheckContext = {
       cloneManifest,
-      goldManifest,
+      liveManifest,
+      referenceManifest,
       cloneDir: args.cloneDir,
-      goldDir: args.goldDir,
+      liveManifestPath: args.liveManifestPath,
+      referenceDir: args.referenceDir,
     };
 
     const checks = await this.loadChecks();
@@ -70,6 +82,14 @@ export class AuditEngine {
     for (const check of checks) {
       try {
         const gaps = await check.run(ctx);
+        // R4: report-only checks (those that touch referenceManifest)
+        // emit gaps tagged minor and do not gate cleanRuns. We don't
+        // enforce that here — checks self-tag severity. CI / Phase 5
+        // gating only counts blocker+major.
+        if (args.reportOnly) {
+          // Downgrade everything to minor when --report-only is set.
+          for (const g of gaps) g.severity = "minor";
+        }
         perCheck[check.name] = gaps.length;
         allGaps.push(...gaps);
       } catch (err) {
@@ -86,15 +106,15 @@ export class AuditEngine {
       }
     }
 
-    const report: AuditReport = {
+    return {
       generatedAt: new Date().toISOString(),
       cloneDir: args.cloneDir,
-      goldDir: args.goldDir,
+      liveManifestPath: args.liveManifestPath,
+      referenceDir: args.referenceDir,
       totalGaps: allGaps.length,
       perCheck,
       gaps: allGaps,
     };
-    return report;
   }
 
   static writeReport(report: AuditReport, outPath: string): void {
@@ -102,19 +122,36 @@ export class AuditEngine {
   }
 }
 
-function readManifest(dir: string): Manifest {
-  const path = resolve(dir, "manifest.json");
+function readManifestFromDir(dir: string): Manifest {
+  // Look for clone-manifest.json first, then manifest.json.
+  for (const candidate of ["clone-manifest.json", "manifest.json"]) {
+    const path = resolve(dir, candidate);
+    if (existsSync(path)) {
+      return JSON.parse(readFileSync(path, "utf-8")) as Manifest;
+    }
+  }
+  throw new Error(
+    `No manifest found in ${dir}. Expected clone-manifest.json or manifest.json. ` +
+      "Run `universal-site-cloner clone` first.",
+  );
+}
+
+function readManifestFromPath(path: string): Manifest {
   if (!existsSync(path)) {
     throw new Error(
-      `manifest.json not found at ${path}. ` +
-        "Run `universal-site-cloner clone` first.",
+      `live-manifest.json not found at ${path}. ` +
+        "Pass --live <path> pointing at a wet-test-output/live-manifest.json.",
     );
   }
   return JSON.parse(readFileSync(path, "utf-8")) as Manifest;
 }
 
-function readManifestOrNull(dir: string): Manifest | null {
-  const path = resolve(dir, "manifest.json");
-  if (!existsSync(path)) return null;
-  return JSON.parse(readFileSync(path, "utf-8")) as Manifest;
+function readManifestFromDirOrNull(dir: string): Manifest | null {
+  for (const candidate of ["live-manifest.json", "manifest.json"]) {
+    const path = resolve(dir, candidate);
+    if (existsSync(path)) {
+      return JSON.parse(readFileSync(path, "utf-8")) as Manifest;
+    }
+  }
+  return null;
 }

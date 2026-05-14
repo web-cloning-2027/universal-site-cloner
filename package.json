@@ -33,7 +33,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck && npm run build",
-    "engine:build": "tsc -p tsconfig.engine.json",
+    "engine:build": "tsc -p tsconfig.engine.json && node -e \"require(\"fs\").writeFileSync(\"dist/package.json\", JSON.stringify({type:\"module\"}))\"",
     "engine:dev": "tsx src-engine/cli.ts",
     "test:prompts": "node scripts/test-prompts.mjs",
     "verify:r18": "node scripts/verify-r18.mjs"

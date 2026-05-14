@@ -1,44 +1,47 @@
 /**
  * Check: url-coverage
- * Catches gap classes: missing-route, extra-route (V7 Gate 1 analog).
+ * Catches gap classes: missing-route, extra-route.
  *
- * If a URL appears in the gold manifest but NOT in the clone manifest
- * with a captured terminal state, that's a missing-route gap.
- * Conversely, URLs in clone but not gold are flagged as extra-route
- * (severity minor — most likely a legit new addition, but logged).
+ * R4: compares the engine-emitted clone manifest against the LIVE
+ * capture from the same wet-test run.
+ *
+ * If a URL appears in the live manifest but NOT in the clone manifest
+ * (or vice-versa), record a gap. extra-route is "minor" — most likely
+ * a legitimate clone-side route the live doesn't have, but worth
+ * surfacing.
  */
 
 import type { Check } from "../types.js";
 
 const check: Check = {
   name: "url-coverage",
-  description: "missing-route / extra-route between clone and gold manifests",
+  description:
+    "missing-route / extra-route between engine clone and same-run live manifest",
   async run(ctx) {
-    if (!ctx.goldManifest) return [];
     const cloneUrls = new Set(ctx.cloneManifest.leaves.map((l) => l.url));
-    const goldUrls = new Set(ctx.goldManifest.leaves.map((l) => l.url));
+    const liveUrls = new Set(ctx.liveManifest.leaves.map((l) => l.url));
     const gaps = [];
     let i = 1;
-    for (const url of goldUrls) {
+    for (const url of liveUrls) {
       if (!cloneUrls.has(url)) {
         gaps.push({
           id: `URL-${i++}`,
           check: this.name,
           kind: "missing-route",
           url,
-          detail: `gold has ${url}, clone is missing`,
+          detail: `live has ${url}, clone is missing`,
           severity: "blocker" as const,
         });
       }
     }
     for (const url of cloneUrls) {
-      if (!goldUrls.has(url)) {
+      if (!liveUrls.has(url)) {
         gaps.push({
           id: `URL-${i++}`,
           check: this.name,
           kind: "extra-route",
           url,
-          detail: `clone has ${url}, gold doesn't`,
+          detail: `clone has ${url}, live doesn't`,
           severity: "minor" as const,
         });
       }

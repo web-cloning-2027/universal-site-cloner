@@ -37,10 +37,13 @@ exactly one of four `action` values:
    section-landing, an additional `:id`-style dedupe rule). Specify
    the exact JSON patch to apply to the site config.
 
-4. `"mark-gold-quirk"` — the gold-standard contains something that
-   cannot be reproduced generically from the live site (a quirk of
-   the hand-built clone). Specify which URL(s) to exempt from
-   future diffs and the rationale.
+4. `"mark-live-volatile"` — the live site itself produces different
+   content across runs (timestamps like "5 minutes ago", a randomized
+   ad slot, a CSRF token rendered into the DOM, etc.). The diff
+   keeps catching it but a literal match is impossible. Specify a
+   class-level signature the audit should match instead of the
+   verbatim string. (R4: there is no "gold-quirk" action — the
+   existing reference clone is report-only and never gates cleanRuns.)
 
 Return JSON of the shape documented in
 `prompts/schemas/scope-remediation.schema.json`. No commentary.
@@ -48,7 +51,7 @@ Return JSON of the shape documented in
 Constraints:
 - Default toward `fix-engine-module` and `add-judge-prompt`. Only
   pick `update-site-config` when the gap is unambiguously a config
-  oversight (not a code limitation). Only pick `mark-gold-quirk`
+  oversight (not a code limitation). Only pick `mark-live-volatile`
   when the gap is literally unreachable from the live site.
 - Genericity rule: any code change you propose must be phrased as a
   feature of any site-cloning engine, never as "handle this
