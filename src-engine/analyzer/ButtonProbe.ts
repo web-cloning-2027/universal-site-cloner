@@ -8,7 +8,7 @@
  *   - if button is a `data-modal` / `data-bs-toggle="modal"`, kind="modal"
  *   - if button is the trigger of a visible menu/dropdown, kind="menu"
  *   - if href points to a downloadable file (extension match), kind="download"
- *   - otherwise we record kind="dead" with a TODO-free reason
+ *   - otherwise we record kind="dead" with an explicit-reason field
  *
  * We do NOT click every button at this stage (would be flaky and slow).
  * A future analyzer pass (`button-click-probe`) can resolve ambiguous

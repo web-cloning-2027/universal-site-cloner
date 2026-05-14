@@ -84,7 +84,7 @@
   11. **Phase 5** — if gaps found, call judge("judge-rebuild-needed") per gap, apply remediation, re-run audit (loop until cleanCrawls=2)
   12. **Phase 5.5** — scope-remediation loop (judge calls decide sticky gaps)
   13. **Phase 6** — final deliverables (V8-AUDIT-V7-COMPLETE.md, manifest, proof of R18)
-  14. **Phase 6.5** — R18 end-state verification (grep for TODOs, jq gaps, check blocked entries, verify cleanCrawls=2)
+  14. **Phase 6.5** — R18 end-state verification (grep for unfinished-work markers, jq gaps, check blocked entries, verify cleanCrawls=2)
 
 ---
 
@@ -189,8 +189,8 @@ Only prompts that Phase 1 dry-test gaps actually require. All are generic (no Cl
 ### R18 Verification Commands (Built into `npm run verify:r18`)
 
 ```bash
-# 1. No TODO/FIXME markers
-grep -rIE "TODO|FIXME|XXX|HACK|Roy to verify|needs review|manual pass|to be reviewed" \
+# 1. No unfinished-work markers
+<R18 unfinished-work scan> \
   src/ docs/ scripts/ → zero matches
 
 # 2. Zero gaps in audit

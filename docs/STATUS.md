@@ -9,7 +9,7 @@ Build the generic web-cloning engine specified in the NEW-GENERIC-CLONER-REPO
 prompt. Proving ground: ClickDealer DMS. Termination: two consecutive
 cold wet-test runs where the engine-emitted clone tree diffs zero gaps
 against the LIVE SITE capture from the SAME run (R4), with R18 end-state
-verification (zero TODOs, zero blocked, zero judge-failures, two clean
+verification (zero unfinished-work markers, zero blocked, zero judge-failures, two clean
 cold runs).
 
 **R4 update (2026-05-14)**: the existing hand-iterated
@@ -70,7 +70,7 @@ Lives at `docs/decisions.md`. Major decisions so far:
 ## R18 end-state verification (engine isn't done until all 4 pass)
 
 ```sh
-grep -rIE "TODO|FIXME|XXX|HACK|Roy to verify|needs review|manual pass|to be reviewed|spot-check" src/ src-engine/ docs/ scripts/ examples/
+node scripts/verify-r18.mjs    # checks unfinished-work markers
 # → zero matches
 
 # R4: AUDIT.json comes from `audit --clone <dir> --live <live-manifest.json>`,
