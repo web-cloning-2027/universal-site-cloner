@@ -119,15 +119,14 @@ export class Scaffold {
           .map((k) => k.replace(/[^a-z0-9]+/gi, ""))
           .filter(Boolean);
         if (keys.length > 0) {
-          const hasDupKeys = keys.length !== new Set(keys).size;
-          const suffix = "/" + keys.join("-").toLowerCase();
-          let suffixed = p + suffix;
-          if (hasDupKeys) {
-            // Append a 6-char hash of u.search to disambiguate
-            // value-only differences with duplicate keys.
-            suffixed += "-" + shortHash(u.search);
-          }
-          p = suffixed;
+          // Two distinct canonical URLs with the same query KEYS but
+          // different VALUES (?sort=col vs ?sort=col%22) would map to
+          // the same key-tuple suffix and overwrite each other.
+          // Always append a 6-char hash of u.search so every distinct
+          // canonical gets a distinct path.
+          const suffix =
+            "/" + keys.join("-").toLowerCase() + "-" + shortHash(u.search);
+          p = p + suffix;
         }
       }
       return p || "/";

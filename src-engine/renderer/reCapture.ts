@@ -91,15 +91,11 @@ function componentNameForUrl(url: string): string {
         .map((k) => k.replace(/[^a-z0-9]+/gi, ""))
         .filter(Boolean);
       if (keys.length > 0) {
-        const hasDupKeys = keys.length !== new Set(keys).size;
-        p = p + "/" + keys.join("-").toLowerCase();
-        if (hasDupKeys) {
-          const hash = createHash("sha1")
-            .update(u.search)
-            .digest("hex")
-            .slice(0, 6);
-          p = p + "-" + hash;
-        }
+        const hash = createHash("sha1")
+          .update(u.search)
+          .digest("hex")
+          .slice(0, 6);
+        p = p + "/" + keys.join("-").toLowerCase() + "-" + hash;
       }
     }
     const segs = p
