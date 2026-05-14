@@ -81,6 +81,15 @@ function componentNameForUrl(url: string): string {
     let p = u.pathname.replace(/\.php$/, "");
     p = p.replace(/\/+/g, "/").replace(/\/$/, "");
     p = p.replace(/:(\w+)/g, "[$1]");
+    // Mirror Scaffold.urlToPath: append query-string keys as a path
+    // suffix so canonical-with-query URLs (e.g. ?id=:id vs ?vehicle_id=:id)
+    // get distinct componentName / route paths.
+    if (u.search) {
+      const keys = [...new URLSearchParams(u.search).keys()]
+        .map((k) => k.replace(/[^a-z0-9]+/gi, ""))
+        .filter(Boolean);
+      if (keys.length > 0) p = p + "/" + keys.join("-").toLowerCase();
+    }
     const segs = p
       .replace(/^\//, "")
       .replace(/\[(\w+)\]/g, "$1")

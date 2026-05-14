@@ -98,6 +98,20 @@ export class Scaffold {
       p = p.replace(/\/+/g, "/").replace(/\/$/, "");
       // :id placeholders → Next.js [id] route segments.
       p = p.replace(/:(\w+)/g, "[$1]");
+      // R10 placeholder-collapse fix: query-string canonical URLs
+      // (?id=:id, ?vehicle_id=:id, etc.) are DISTINCT logical leaves
+      // and must get DISTINCT routes. Encode the query-string
+      // discriminator into the path as a /-<key1>-<key2> suffix so
+      // siblings don't overwrite each other.
+      if (u.search) {
+        const keys = [...new URLSearchParams(u.search).keys()]
+          .map((k) => k.replace(/[^a-z0-9]+/gi, ""))
+          .filter(Boolean);
+        if (keys.length > 0) {
+          const suffix = "/" + keys.join("-").toLowerCase();
+          p = p + suffix;
+        }
+      }
       return p || "/";
     } catch {
       return "/";
