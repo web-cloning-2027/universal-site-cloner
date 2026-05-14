@@ -60,6 +60,9 @@ export interface CrawlerConfig {
   maxRetries?: number;
   /** Per-URL navigation timeout in ms. Default 20000. */
   navigationTimeoutMs?: number;
+  /** Per-URL TOTAL-time budget (nav + analyzer + tabs + buttons) in ms.
+   *  Default 120000. If exceeded the URL is marked blocked. R11. */
+  perUrlBudgetMs?: number;
   /** Force serial navigation (no per-URL parallelism). Default true. */
   serial?: boolean;
 }

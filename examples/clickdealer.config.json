@@ -40,6 +40,8 @@
       { "pattern": "\\?month=\\d+&year=\\d+", "replace": "?month=:m&year=:y" },
       { "pattern": "&month=\\d+", "replace": "&month=:m" },
       { "pattern": "&year=\\d+", "replace": "&year=:y" },
+      { "pattern": "&cat=-?\\d+", "replace": "&cat=:c" },
+      { "pattern": "\\?cat=-?\\d+", "replace": "?cat=:c" },
       { "pattern": "/image_manager/\\d+", "replace": "/image_manager/:id" },
       { "pattern": "/vehicles/\\d+", "replace": "/vehicles/:id" },
       { "pattern": "/customers/\\d+", "replace": "/customers/:id" },
@@ -49,6 +51,7 @@
     "retryBackoffMs": 1000,
     "maxRetries": 4,
     "navigationTimeoutMs": 40000,
+    "perUrlBudgetMs": 120000,
     "serial": true
   },
   "hints": {

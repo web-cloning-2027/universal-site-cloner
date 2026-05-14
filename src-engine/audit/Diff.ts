@@ -14,8 +14,8 @@
  * class it catches.
  */
 
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import type { AuditReport, Check, CheckContext, Gap } from "./types.js";
@@ -118,6 +118,7 @@ export class AuditEngine {
   }
 
   static writeReport(report: AuditReport, outPath: string): void {
+    mkdirSync(dirname(outPath), { recursive: true });
     writeFileSync(outPath, JSON.stringify(report, null, 2));
   }
 }
@@ -130,18 +131,31 @@ function readManifestFromDir(dir: string): Manifest {
       return JSON.parse(readFileSync(path, "utf-8")) as Manifest;
     }
   }
-  throw new Error(
-    `No manifest found in ${dir}. Expected clone-manifest.json or manifest.json. ` +
-      "Run `universal-site-cloner clone` first.",
-  );
+  // R10 audit checks (engine-side: per-url-stalled, blocked-cluster,
+  // placeholder-as-target, dedupe-coverage) only need queue-state.json
+  // which is in dir/.. — they don't require a populated clone-manifest.
+  // Return an empty manifest so those checks can still run when the
+  // crawler aborted before scaffold-emit.
+  return {
+    generatedAt: new Date().toISOString(),
+    configName: "(empty — no manifest emitted)",
+    seedUrls: [],
+    leafCount: 0,
+    leaves: [],
+  };
 }
 
 function readManifestFromPath(path: string): Manifest {
   if (!existsSync(path)) {
-    throw new Error(
-      `live-manifest.json not found at ${path}. ` +
-        "Pass --live <path> pointing at a wet-test-output/live-manifest.json.",
-    );
+    // Same R10 rationale as readManifestFromDir: engine-side checks
+    // can still run against queue-state.json alone. Return empty.
+    return {
+      generatedAt: new Date().toISOString(),
+      configName: "(empty — no live-manifest emitted)",
+      seedUrls: [],
+      leafCount: 0,
+      leaves: [],
+    };
   }
   return JSON.parse(readFileSync(path, "utf-8")) as Manifest;
 }

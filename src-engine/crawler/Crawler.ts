@@ -60,6 +60,11 @@ export class Crawler {
   }
 
   async run(): Promise<CrawlResult> {
+    // Per-URL TOTAL-time budget (R11: no silent stalls). Default 120s
+    // covers worst-case nav + analyzer + tab recursion + button probe.
+    // Configurable so heavyweight sites can bump it up.
+    const perUrlBudgetMs =
+      this.args.crawlerConfig.perUrlBudgetMs ?? 120_000;
     while (true) {
       const entry = this.queue.pop();
       if (!entry) break;
@@ -68,7 +73,11 @@ export class Crawler {
         // URL the server actually serves) but key terminal/dedupe state
         // by the canonical form. Closes "placeholder-as-target" engine
         // bug where the engine tried to fetch /diary.php?month=:m.
-        await this.processOne(entry.url, entry.rawUrl);
+        await this.withBudget(
+          () => this.processOne(entry.url, entry.rawUrl),
+          perUrlBudgetMs,
+          entry.url,
+        );
       } catch (err) {
         const reason = (err as { message?: string })?.message || String(err);
         this.queue.markTerminal(entry.url, "blocked", reason);
@@ -159,6 +168,32 @@ export class Crawler {
     } finally {
       await nav.page.close().catch(() => {});
     }
+  }
+
+  /**
+   * Run `work` with a TOTAL-time budget. If exceeded, throws a
+   * BudgetExceeded error that the caller maps to terminalState=blocked.
+   * Prevents a single hung analyzer (TabRecursor / ButtonProbe /
+   * page.evaluate) from wedging the entire crawl.
+   */
+  private withBudget<T>(
+    work: () => Promise<T>,
+    budgetMs: number,
+    label: string,
+  ): Promise<T> {
+    let timer: NodeJS.Timeout | undefined;
+    const guard = new Promise<T>((_, reject) => {
+      timer = setTimeout(
+        () =>
+          reject(
+            new Error(
+              `per-URL budget exceeded (${budgetMs}ms): analyzer wedged on ${label}`,
+            ),
+          ),
+        budgetMs,
+      );
+    });
+    return Promise.race([work().finally(() => clearTimeout(timer)), guard]);
   }
 
   private maybeFlush(): void {
