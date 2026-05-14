@@ -86,29 +86,24 @@ export class Queue {
       canonical = canonical.replace(rule.re, rule.replace);
     }
 
-    // Now normalize the dedupe'd canonical:
-    //   - Drop empty-value query params (key= with no value).
-    //   - Drop a trailing `?` if no params survived.
-    // This closes audit url-coverage drift where the same logical
-    // leaf serialised differently across runs.
-    try {
-      const u2 = new URL(canonical);
-      if (u2.search) {
-        const params = new URLSearchParams(u2.search);
-        const cleaned = new URLSearchParams();
-        for (const [k, v] of params.entries()) {
-          if (v === "" || v === undefined || v === null) continue;
-          cleaned.append(k, v);
-        }
-        const cleanedStr = cleaned.toString();
-        u2.search = cleanedStr ? "?" + cleanedStr : "";
-      }
-      canonical = u2.toString();
-    } catch {
-      // canonical might not parse if dedupe inserted weird text;
-      // fall back to string trimming.
+    // Now normalize the dedupe'd canonical via STRING manipulation
+    // (NOT a fresh URL reparse — that would percent-encode the `:`
+    // placeholders inserted by the dedupe rules, e.g. `?id=:id`
+    // would become `?id=%3Aid`).
+    //   - Drop empty-value query params (key= with no value)
+    //   - Drop a trailing `?` / `&` if no params survived
+    const qIdx = canonical.indexOf("?");
+    if (qIdx >= 0) {
+      const path = canonical.slice(0, qIdx);
+      const queryStr = canonical.slice(qIdx + 1);
+      const parts = queryStr.split("&").filter((p) => {
+        if (!p) return false;
+        const eqIdx = p.indexOf("=");
+        if (eqIdx < 0) return true; // bare key with no =, keep
+        return p.slice(eqIdx + 1) !== ""; // drop key with empty value
+      });
+      canonical = parts.length > 0 ? path + "?" + parts.join("&") : path;
     }
-    if (canonical.endsWith("?")) canonical = canonical.slice(0, -1);
     return canonical;
   }
 
