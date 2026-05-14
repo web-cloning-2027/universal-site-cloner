@@ -1,0 +1,25 @@
+[
+  {
+    "name": "missing-button-on-a-grid-leaf",
+    "input": {
+      "gap": {
+        "id": "GAP-LIVE-12",
+        "kind": "missing-button",
+        "url": "/inventory/items",
+        "detail": "live has button 'Update Price' (kind=modal); clone has no equivalent button",
+        "severity": "blocker"
+      },
+      "attemptsSoFar": [
+        { "kind": "code", "file": "src-engine/analyzer/ButtonProbe.ts", "summary": "added new selector for action toolbar buttons", "result": "no change" },
+        { "kind": "code", "file": "src-engine/analyzer/ButtonProbe.ts", "summary": "removed dedupe by destination", "result": "no change" },
+        { "kind": "config", "file": "examples/<site>.config.json", "summary": "added hints.shapeOverride=grid for this URL", "result": "no change" }
+      ],
+      "currentDiff": "live: 14 buttons, clone: 9 buttons (5 missing)",
+      "manifestExcerpt": "[{ label: 'Update Price', kind: 'modal' }, ...]"
+    },
+    "expect": {
+      "predicate": "['fix-engine-module','add-judge-prompt'].includes(result.action) && ['high','medium','low'].includes(result.confidence)",
+      "description": "scope-remediation should propose either fix-engine-module or add-judge-prompt for a missing-button class"
+    }
+  }
+]

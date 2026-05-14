@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action", "confidence", "rationale"],
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "fix-engine-module",
+        "add-judge-prompt",
+        "update-site-config",
+        "mark-gold-quirk"
+      ]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "rationale": { "type": "string", "minLength": 10 },
+    "fixEngineModule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modulePath", "description"],
+      "properties": {
+        "modulePath": { "type": "string" },
+        "functions": { "type": "array", "items": { "type": "string" } },
+        "description": { "type": "string", "minLength": 20 }
+      }
+    },
+    "addJudgePrompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["promptName", "inputShape", "outputShape"],
+      "properties": {
+        "promptName": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "inputShape": { "type": "object" },
+        "outputShape": { "type": "object" }
+      }
+    },
+    "updateSiteConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configPath", "patch"],
+      "properties": {
+        "configPath": { "type": "string" },
+        "patch": { "type": "object" }
+      }
+    },
+    "markGoldQuirk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["urls", "rationale"],
+      "properties": {
+        "urls": { "type": "array", "items": { "type": "string" } },
+        "rationale": { "type": "string", "minLength": 10 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "action": { "const": "fix-engine-module" } } },
+      "then": { "required": ["fixEngineModule"] }
+    },
+    {
+      "if": { "properties": { "action": { "const": "add-judge-prompt" } } },
+      "then": { "required": ["addJudgePrompt"] }
+    },
+    {
+      "if": { "properties": { "action": { "const": "update-site-config" } } },
+      "then": { "required": ["updateSiteConfig"] }
+    },
+    {
+      "if": { "properties": { "action": { "const": "mark-gold-quirk" } } },
+      "then": { "required": ["markGoldQuirk"] }
+    }
+  ]
+}

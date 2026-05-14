@@ -1,0 +1,53 @@
+{
+  "name": "clickdealer",
+  "displayName": "ClickDealer DMS (proving ground)",
+  "auth": {
+    "strategy": "KeycloakHandoffAuth",
+    "loginUrl": "https://dms.myclickdealer.co.uk/",
+    "postLoginAnchor": "https://dms.myclickdealer.co.uk/home.php"
+  },
+  "crawler": {
+    "seedUrls": [
+      "https://dms.myclickdealer.co.uk/",
+      "https://dms.myclickdealer.co.uk/home.php"
+    ],
+    "allowlistRegex": "^https://dms\\.myclickdealer\\.co\\.uk/",
+    "dedupe": [
+      { "pattern": "/vehicles/\\d+", "replace": "/vehicles/:id" },
+      { "pattern": "/customers/\\d+", "replace": "/customers/:id" },
+      { "pattern": "/enquiries/\\d+", "replace": "/enquiries/:id" },
+      { "pattern": "/diary/\\d+", "replace": "/diary/:id" },
+      { "pattern": "/invoices/\\d+", "replace": "/invoices/:id" },
+      { "pattern": "/order\\.php\\?enquiry_id=\\d+", "replace": "/order.php?enquiry_id=:id" },
+      { "pattern": "/vehicle_details\\.php\\?id=\\d+", "replace": "/vehicle_details.php?id=:id" }
+    ],
+    "retryBackoffMs": 500,
+    "maxRetries": 3,
+    "serial": true
+  },
+  "hints": {
+    "endpointPatterns": [
+      "/.*_print\\.php$",
+      "/.*_csv\\.php$",
+      "/xml_export\\.php$",
+      "/downloads/",
+      "/blog/",
+      "/api/",
+      "/hmrc/auth\\.php$",
+      "/configure-redirect\\.php$",
+      "/_a_",
+      "\\.csv$",
+      "\\.xml$",
+      "\\.pdf$"
+    ],
+    "sectionLandingPatterns": [
+      "^https://dms\\.myclickdealer\\.co\\.uk/$",
+      "^https://dms\\.myclickdealer\\.co\\.uk/home\\.php$",
+      "^https://dms\\.myclickdealer\\.co\\.uk/diary\\.php$",
+      "^https://dms\\.myclickdealer\\.co\\.uk/sales_enquiries\\.php$",
+      "^https://dms\\.myclickdealer\\.co\\.uk/price_changes_audit_report\\.php$"
+    ],
+    "shapeOverrides": []
+  },
+  "visualDiffThresholdPct": 12
+}

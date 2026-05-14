@@ -1,0 +1,13 @@
+{
+  "name": "example-static",
+  "displayName": "example.com (genericity proof — small public site, no auth)",
+  "auth": { "strategy": "NoAuth" },
+  "crawler": {
+    "seedUrls": ["https://example.com/"],
+    "allowlistRegex": "^https://example\\.com/",
+    "retryBackoffMs": 500,
+    "maxRetries": 3
+  },
+  "hints": {},
+  "visualDiffThresholdPct": 20
+}
