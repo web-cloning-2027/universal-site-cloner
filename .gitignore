@@ -47,3 +47,13 @@ next-env.d.ts
 
 # Local temp files
 temp/
+
+# universal-site-cloner additions (Phase 0)
+state.json
+cookies/
+~/.config/universal-site-cloner-sessions/
+wet-test-output/
+baseline-old-template-output/
+*.log
+docs/research/engine-progress.log
+.judge-cache/
