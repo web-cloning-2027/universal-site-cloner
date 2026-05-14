@@ -58,7 +58,7 @@ export class Queue {
     this.startedAt = new Date().toISOString();
   }
 
-  /** Canonicalize a URL: normalize query, drop hash, apply dedupe rules. */
+  /** Canonicalize a URL: drop hash, apply dedupe rules, then normalize. */
   canonicalize(rawUrl: string): string | null {
     // R10 template-leak filter: reject URLs whose query string still
     // contains an unresolved {TEMPLATE_PLACEHOLDER}. Generic across
@@ -72,36 +72,43 @@ export class Queue {
     }
     if (url.protocol !== "http:" && url.protocol !== "https:") return null;
     url.hash = "";
-
-    // Query-string normalization (closes audit url-coverage drift
-    // from trailing `?` and empty-value params):
-    //   - Empty-value params (key= with no value) are dropped.
-    //     A leaf with `vehicle_id=&enquiry_source_id=` is functionally
-    //     the same leaf as one without those params.
-    //   - If the entire query string ends up empty, drop the `?`.
-    if (url.search) {
-      const params = new URLSearchParams(url.search);
-      const cleaned = new URLSearchParams();
-      for (const [k, v] of params.entries()) {
-        if (v === "" || v === undefined || v === null) continue;
-        cleaned.append(k, v);
-      }
-      const cleanedStr = cleaned.toString();
-      url.search = cleanedStr ? "?" + cleanedStr : "";
-    }
-
     let canonical = url.toString();
     // Trim trailing slash except for root.
     if (canonical.endsWith("/") && url.pathname.length > 1) {
       canonical = canonical.replace(/\/$/, "");
     }
-    // Trim trailing `?` (URL.toString() preserves empty `?` from raw).
-    if (canonical.endsWith("?")) {
-      canonical = canonical.slice(0, -1);
-    }
+
+    // Apply dedupe rules FIRST — these match against the URL with its
+    // original query string (incl. empty-value params like
+    // &vehicle_id=&enquiry_source_id=). Reordering: dedupe → then
+    // normalize, so the rule patterns can rely on the original shape.
     for (const rule of this.dedupeRules) {
       canonical = canonical.replace(rule.re, rule.replace);
     }
+
+    // Now normalize the dedupe'd canonical:
+    //   - Drop empty-value query params (key= with no value).
+    //   - Drop a trailing `?` if no params survived.
+    // This closes audit url-coverage drift where the same logical
+    // leaf serialised differently across runs.
+    try {
+      const u2 = new URL(canonical);
+      if (u2.search) {
+        const params = new URLSearchParams(u2.search);
+        const cleaned = new URLSearchParams();
+        for (const [k, v] of params.entries()) {
+          if (v === "" || v === undefined || v === null) continue;
+          cleaned.append(k, v);
+        }
+        const cleanedStr = cleaned.toString();
+        u2.search = cleanedStr ? "?" + cleanedStr : "";
+      }
+      canonical = u2.toString();
+    } catch {
+      // canonical might not parse if dedupe inserted weird text;
+      // fall back to string trimming.
+    }
+    if (canonical.endsWith("?")) canonical = canonical.slice(0, -1);
     return canonical;
   }
 
