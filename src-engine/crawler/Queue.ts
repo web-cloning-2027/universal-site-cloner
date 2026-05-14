@@ -60,6 +60,10 @@ export class Queue {
 
   /** Canonicalize a URL: trim, normalize trailing slashes, drop hash, apply dedupe. */
   canonicalize(rawUrl: string): string | null {
+    // R10 template-leak filter: reject URLs whose query string still
+    // contains an unresolved {TEMPLATE_PLACEHOLDER}. Generic across
+    // sites — every page-template language can leak placeholders.
+    if (/\{[A-Z_][A-Z0-9_]*\}/.test(rawUrl)) return null;
     let url: URL;
     try {
       url = new URL(rawUrl);
