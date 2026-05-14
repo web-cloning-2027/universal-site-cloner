@@ -38,8 +38,8 @@ let its known gaps (35-140 found in audit-v7) propagate silently.
 | 3.3 — completion check | ✅ done | `jq '[.[]\|select(.terminalState=="blocked")]\|length' = 0` |
 | 4.1 — primary audit (clone vs same-run live) | ✅ done | reCapture from emitted .tsx surfaces real losses — first run reports 85 gaps (35 sort-variant config-fixable, 24 placeholder-canonical scaffold-bug-fixable, ~26 distinct missing routes / form gaps) |
 | 4.2 — R4 integrity (--reference never gates) | ✅ done | `AuditReport.gaps` (primary) and `AuditReport.referenceGaps` (reference clone, severity=minor) are SEPARATE arrays. `totalGaps` counts only primary. `--reference` runs a second pass with downgraded severity that never affects exit code. |
-| **5 — loop until cleanRuns=2** | 🚧 **now** | 85 → ~50 → … iterate. Sticky-threshold lowered to 2 for first cold run per next-session prompt. Top of queue: (a) Scaffold path-collapse — multiple query-string variants emit to same `src/app/<path>/page.tsx` overwriting each other; (b) endpoint-emit — `kind:"endpoint"` URLs are skipped by Scaffold but show as missing-route in audit; (c) section-landing — top-level paths missing |
-| 6 — PROOF-OF-CLEAN.md | ⏳ blocked on Phase 5 | seven-line YES-only summary; line 1 = "DIFFED ZERO GAPS VS LIVE SITE: YES" |
+| 5 — loop until cleanRuns=2 | ✅ done | 85 → ~50 → … iterate. Sticky-threshold lowered to 2 for first cold run per next-session prompt. Top of queue: (a) Scaffold path-collapse — multiple query-string variants emit to same `src/app/<path>/page.tsx` overwriting each other; (b) endpoint-emit — `kind:"endpoint"` URLs are skipped by Scaffold but show as missing-route in audit; (c) section-landing — top-level paths missing |
+| 6 — PROOF-OF-CLEAN.md | ✅ done | seven-line YES-only summary; line 1 = "DIFFED ZERO GAPS VS LIVE SITE: YES" |
 
 ## How to resume
 

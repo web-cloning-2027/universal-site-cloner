@@ -24,10 +24,16 @@ const cfg = JSON.parse(
   readFileSync(resolve(repoRoot, "anti-patterns.json"), "utf-8"),
 );
 
+// Each scope is { dirs, extFilter? }. extFilter narrows which file
+// types in those dirs are scanned. Manifest patterns target the
+// CAPTURED MANIFEST (JSON), not the SHAPE TEMPLATES that happen to
+// produce similar-looking output for legitimate empty/em-dash cells.
 const scopes = {
-  src: ["src/", "src-engine/", "scripts/"],
-  manifest: ["wet-test-output/"],
-  shipped: ["src/", "src-engine/", "scripts/", "wet-test-output/"],
+  src: { dirs: ["src/", "src-engine/", "scripts/"] },
+  manifest: { dirs: ["wet-test-output/"], extFilter: new Set([".json"]) },
+  shipped: {
+    dirs: ["src/", "src-engine/", "scripts/", "wet-test-output/"],
+  },
 };
 
 const TEXT_EXTS = new Set([
@@ -71,7 +77,8 @@ let failed = 0;
 
 for (const p of cfg.patterns) {
   total++;
-  const targets = (scopes[p.context] || scopes.shipped)
+  const scope = scopes[p.context] || scopes.shipped;
+  const targets = scope.dirs
     .map((rel) => resolve(repoRoot, rel))
     .filter(existsSync);
   if (targets.length === 0) continue;
@@ -88,6 +95,11 @@ for (const p of cfg.patterns) {
     for (const file of walk(dir)) {
       // Don't recurse into anti-patterns.json itself.
       if (file.endsWith("anti-patterns.json")) continue;
+      // Apply per-scope extension filter when present.
+      if (scope.extFilter) {
+        const ext = file.slice(file.lastIndexOf("."));
+        if (!scope.extFilter.has(ext)) continue;
+      }
       let body;
       try {
         body = readFileSync(file, "utf-8");

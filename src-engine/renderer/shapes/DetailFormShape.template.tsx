@@ -4,7 +4,7 @@
  * Minimum-viable: renders each panel as a fieldset with its captured
  * fields. Per-field widget chosen from `kind`. Future sessions will
  * extend with the gold-standard's right-rail sub-nav, totals row,
- * submit-action footer, etc. — see notes/02-lessons-from-clickdealer.md.
+ * submit-action footer, etc. — see notes/02-lessons-from-corpus.md.
  */
 
 type Field = {

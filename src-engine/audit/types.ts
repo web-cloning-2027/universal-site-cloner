@@ -5,7 +5,7 @@
  * run, NOT a hand-iterated reference clone. The CheckContext exposes:
  *   - cloneManifest: engine-emitted clone manifest (from wet-test-output/clone/)
  *   - liveManifest:  live-site capture from the SAME run (from wet-test-output/live-manifest.json)
- *   - referenceManifest?: an existing clone (e.g. clickdealer-clone) — REPORT-ONLY (R4)
+ *   - referenceManifest?: an existing reference clone — REPORT-ONLY (R4)
  *
  * Checks compare cloneManifest ↔ liveManifest. Any check that touches
  * referenceManifest is opt-in and CANNOT gate cleanRuns.
@@ -46,7 +46,7 @@ export interface CheckContext {
   cloneManifest: Manifest;
   /** R4: live capture from the same wet-test run. */
   liveManifest: Manifest;
-  /** Optional reference clone manifest (e.g. clickdealer-clone). Report-only (R4). */
+  /** Optional reference clone manifest (a prior hand-iterated clone of the same site). Report-only (R4). */
   referenceManifest?: Manifest | null;
   cloneDir: string;
   liveManifestPath: string;
