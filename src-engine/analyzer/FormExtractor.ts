@@ -23,9 +23,9 @@ import { TEXT_HELPERS } from "./text.js";
 import type { FormSection } from "../manifest.js";
 
 const PANEL_SELECTOR =
-  "main fieldset, main section[class*='panel-outer' i], " +
-  "main section[class*='panel' i], main .panel, " +
-  "main [role='group']";
+  "fieldset, section[class*='panel-outer' i], " +
+  "section[class*='panel' i], .panel, " +
+  "[role='group']";
 
 export async function extractForm(page: Page): Promise<FormSection[]> {
   const script = `(() => {
@@ -74,12 +74,13 @@ export async function extractForm(page: Page): Promise<FormSection[]> {
       if (el.hasAttribute("required")) field.required = true;
       return field;
     }
-    const panels = [...document.querySelectorAll(${JSON.stringify(PANEL_SELECTOR)})];
+    const panels = qsa(${JSON.stringify(PANEL_SELECTOR)});
     if (panels.length === 0) {
-      // Fall back: treat the whole <main> as one implicit panel.
-      const inputs = [...document.querySelectorAll("main input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=search]), main select, main textarea")];
+      // Fall back: treat the whole content root as one implicit panel.
+      const inputs = qsa("input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=search]), select, textarea");
       if (inputs.length === 0) return [];
-      return [{ label: "", fields: inputs.map(describeField) }];
+      // Cap fields so we don't drown the manifest in a single mega-panel.
+      return [{ label: "", fields: inputs.slice(0, 200).map(describeField) }];
     }
     return panels.map(p => {
       const title = p.querySelector("h1, h2, h3, h4, legend, .panel-title, .panel-heading");

@@ -1,0 +1,7 @@
+import { DiaryTimestampfromTimestampCatSpSpSpSpSpSpSpSpStStStStStStStStStStStStLocLocLocLocLocLocLocLocLocLocCat99afbcPage } from "@/components/DiaryTimestampfromTimestampCatSpSpSpSpSpSpSpSpStStStStStStStStStStStStLocLocLocLocLocLocLocLocLocLocCat99afbcPage";
+
+export const metadata = { title: "DiaryTimestampfromTimestampCatSpSpSpSpSpSpSpSpStStStStStStStStStStStStLocLocLocLocLocLocLocLocLocLocCat99afbc" };
+
+export default function Page() {
+  return <DiaryTimestampfromTimestampCatSpSpSpSpSpSpSpSpStStStStStStStStStStStStLocLocLocLocLocLocLocLocLocLocCat99afbcPage />;
+}

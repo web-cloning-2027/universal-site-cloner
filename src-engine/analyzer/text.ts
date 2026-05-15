@@ -32,4 +32,19 @@ function classifyInputKind(td) {
   if (td.querySelector("input[type='text'], input:not([type])")) return "text";
   return "value";
 }
+/** Find the page's main content root.
+ *  Modern HTML5 sites use <main>; legacy / pre-HTML5 (PHP, classic CMS)
+ *  put everything in body. Falls back to body excluding nav/header/footer
+ *  so we don't accidentally count sidebar links as page content.
+ *  Generic across HTML eras.
+ */
+function contentRoot() {
+  return document.querySelector("main") || document.body || document.documentElement;
+}
+/** querySelectorAll, scoped to contentRoot. */
+function qsa(selector) {
+  const root = contentRoot();
+  if (!root) return [];
+  return [...root.querySelectorAll(selector)];
+}
 `;

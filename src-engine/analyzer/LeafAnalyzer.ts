@@ -66,7 +66,11 @@ export class LeafAnalyzer {
     }
 
     await page.waitForLoadState("domcontentloaded").catch(() => {});
-    await page.waitForTimeout(200);
+    // Give server-rendered tables + delayed async DOM additions time
+    // to land before we extract. networkidle is best-effort (legacy
+    // sites may keep long-poll connections); cap at 4s.
+    await page.waitForLoadState("networkidle", { timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(800);
 
     const [breadcrumbs, h1, title] = await Promise.all([
       page.$$eval("nav[aria-label='breadcrumb'] a, .breadcrumbs a", (els) =>

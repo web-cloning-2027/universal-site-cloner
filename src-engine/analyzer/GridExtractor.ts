@@ -11,9 +11,18 @@ import type { DataGrid } from "../manifest.js";
 export async function extractGrids(page: Page): Promise<DataGrid[]> {
   const script = `(() => {
     ${TEXT_HELPERS}
-    const tables = [...document.querySelectorAll("main table")];
+    // Scope to content root (main or body fallback). Filter trivial layout
+    // tables (no thead + ≤1 row) so we keep grids of meaningful data.
+    const tables = qsa("table").filter(t => {
+      const hasThead = !!t.querySelector("thead");
+      const rowCount = t.querySelectorAll("tbody tr").length;
+      // keep if: has thead, OR has >2 rows, OR has any th
+      return hasThead || rowCount > 2 || t.querySelector("th");
+    });
     return tables.map(t => {
-      const headTh = [...t.querySelectorAll("thead th")];
+      // thead th first; fall back to first row of <th> cells if no thead
+      let headTh = [...t.querySelectorAll("thead th")];
+      if (headTh.length === 0) headTh = [...t.querySelectorAll("tr:first-child th")];
       const cols = headTh.map(spaceyText);
       const bodyRows = [...t.querySelectorAll("tbody tr")];
       // First non-totals body row for kind capture.

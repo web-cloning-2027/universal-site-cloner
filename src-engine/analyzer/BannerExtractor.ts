@@ -17,10 +17,10 @@ import { TEXT_HELPERS } from "./text.js";
 import type { PageInfoBanner } from "../manifest.js";
 
 const BANNER_SELECTOR =
-  "main [role='alert'], " +
-  "main [class*='alert' i], main [class*='notice' i], " +
-  "main [class*='warning' i], main [class*='banner' i], " +
-  "main [class*='info-banner' i]";
+  "[role='alert'], " +
+  "[class*='alert' i], [class*='notice' i], " +
+  "[class*='warning' i], [class*='banner' i], " +
+  "[class*='info-banner' i]";
 
 export async function extractBanners(page: Page): Promise<PageInfoBanner[]> {
   const script = `(() => {
@@ -34,14 +34,14 @@ export async function extractBanners(page: Page): Promise<PageInfoBanner[]> {
       return "info";
     }
     const out = [];
-    for (const el of document.querySelectorAll(${JSON.stringify(BANNER_SELECTOR)})) {
+    for (const el of qsa(${JSON.stringify(BANNER_SELECTOR)})) {
       const text = spaceyText(el);
       if (text && text.length > 2 && text.length < 600) {
         out.push({ level: levelOf(el), text });
       }
     }
-    // "Please Note …" paragraphs.
-    for (const p of document.querySelectorAll("main p")) {
+    // "Please Note …" paragraphs (scoped to content root).
+    for (const p of qsa("p")) {
       const text = spaceyText(p);
       if (/^Please Note\\b/.test(text) && text.length < 600 && !out.find(o => o.text === text)) {
         out.push({ level: "warning", text });

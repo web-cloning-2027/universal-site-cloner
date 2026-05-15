@@ -29,9 +29,11 @@ export async function probeButtons(page: Page): Promise<Button[]> {
       for (const br of clone.querySelectorAll("br")) br.replaceWith(document.createTextNode(" "));
       return (clone.textContent || "").replace(/\\s+/g, " ").trim();
     }
+    function contentRoot() { return document.querySelector("main") || document.body; }
+    function qsa(s) { const r = contentRoot(); return r ? [...r.querySelectorAll(s)] : []; }
     const origin = window.location.origin;
     const out = [];
-    for (const el of document.querySelectorAll("main button, main a[href], main [role='button']")) {
+    for (const el of qsa("button, a[href], [role='button']")) {
       const text = spaceyText(el);
       if (!text) continue;
       const tag = el.tagName.toLowerCase();

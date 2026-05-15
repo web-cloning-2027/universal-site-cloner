@@ -14,10 +14,10 @@ import type { Page } from "playwright";
 import type { ActionMenu } from "../manifest.js";
 
 const TRIGGER_SELECTOR = [
-  "main [aria-haspopup='menu']",
-  "main [data-bs-toggle='dropdown']",
-  "main button[aria-label*='actions' i]",
-  "main button[aria-label*='more' i]",
+  "[aria-haspopup='menu']",
+  "[data-bs-toggle='dropdown']",
+  "button[aria-label*='actions' i]",
+  "button[aria-label*='more' i]",
 ].join(", ");
 
 export async function probeActionMenus(page: Page): Promise<ActionMenu[]> {
