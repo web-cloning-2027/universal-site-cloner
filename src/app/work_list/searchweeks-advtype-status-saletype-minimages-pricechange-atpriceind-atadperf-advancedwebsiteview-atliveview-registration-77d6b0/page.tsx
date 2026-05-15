@@ -1,7 +1,0 @@
-import { WorkListSearchweeksAdvtypeStatusSaletypeMinimagesPricechangeAtpriceindAtadperfAdvancedwebsiteviewAtliveviewRegistration77d6b0Page } from "@/components/WorkListSearchweeksAdvtypeStatusSaletypeMinimagesPricechangeAtpriceindAtadperfAdvancedwebsiteviewAtliveviewRegistration77d6b0Page";
-
-export const metadata = { title: "WorkListSearchweeksAdvtypeStatusSaletypeMinimagesPricechangeAtpriceindAtadperfAdvancedwebsiteviewAtliveviewRegistration77d6b0" };
-
-export default function Page() {
-  return <WorkListSearchweeksAdvtypeStatusSaletypeMinimagesPricechangeAtpriceindAtadperfAdvancedwebsiteviewAtliveviewRegistration77d6b0Page />;
-}
